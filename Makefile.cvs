@@ -1,0 +1,17 @@
+
+MY_CFLAGS=-ggdb -Wall -O
+#MP_CONF_FLAGS=--enable-maintainer-mode --disable-static
+MP_CONF_FLAGS=INSTALL="/usr/bin/install -p" --enable-maintainer-mode --disable-static
+
+default: mp
+
+mp:
+	libtoolize -f --automake
+	aclocal -I m4
+	autoheader
+	automake --add-missing
+	autoconf
+	CXXFLAGS="-ggdb -Wall" \
+	  CFLAGS="$(MY_CFLAGS)" \
+	  ./configure $(MP_CONF_FLAGS)
+

@@ -1,0 +1,70 @@
+
+
+PC/SC Proxy
+===========
+
+Dieses Projekt ermoeglicht es einem Thin-Client seine angeschlossenen Leser
+auch in einer Login-Session auf einem Server zu verwenden.
+
+Dazu leuft auf dem Thin-client der mitgelieferte PC/SC-Proxy-Dienst. Sobald
+der Benutzer sich am Server anmeldet und dort eine Anwendung aufruft, welche
+die PC/SC-API fuer Chipkarten verwendet, verbindet sich diese Anwendung mit
+dem PC/SC Proxy Dienst auf dem Thin-Client, so dass der Benutzer auch in der
+Server-Session Zugriff auf seine eigenen Leser hat.
+
+
+Dieses Projekt besteht somit aus zwei Teilen:
+- Ersatz fuer die Systembibliothek libpcsclite.so
+  Diese Bibliothek muss auf dem Server installiert werden und ersetzt die
+  normalerweise installierte Systembibliothek libpcsclite.so
+- PC/SC Proxy Dienst
+  Dieser Dienst muss auf den Thin-Clients installiert werden und wird
+  dann aus einer Session auf dem Server heraus angesprochen.
+
+
+
+Installation
+============
+
+Auf ein und demselben System darf nicht die Ersatz-Bibliothek *und* der
+PC/SC-Proxy-Dienst installiert werden! 
+
+===========================================================================
+II  AUF EINEM THIN-CLIENT SOLLTE DAHER *NUR* IM VERZEICHNIS              II
+II                       "src/server"                                    II
+II  EIN                                                                  II
+II                        "make install"                                 II
+II  AUSGEFUEHRT WERDEN!!                                                 II
+===========================================================================
+
+
+
+Terminal-Server
+---------------
+Hier muss lediglich die mitgelieferte "libpcsclite.so" installiert werden.
+
+
+Thin-Clients
+------------
+Auf jedem Thin-Client, an dem Chipkarten genutzt werden sollen, muss der 
+PC/SC-Proxy-Dienst installiert werden. Dieser sollte ausserdem beim Booten
+des Rechners gestartet werden, so dass er nach dem Booten verfuegbar ist.
+
+Auf den Thin-Clients muss zudem die originale libpcsclite.so der Distribution
+installiert sein.
+
+
+
+Arbeitsweise
+============
+
+Sobald eine Anwendung SCardEstablishContext() aufruft (diese Funktion dient
+dem Aufbau einer Verbindung zum PC/SC-Dienst) wird durch die Ersatzbibliothek
+eine Verbindung zum PC/SC-Proxy-Dienst auf dem angeschlossen Thin-Client
+hergestellt. Ab dann - bis zum Aufruf von SCardReleaseContext() - werden
+alle PC/SC-Funktionsaufrufe an den Dienst auf dem Thin-Client weitergeleitet,
+
+Die Adresse des jeweiligen Thin-Clients wird aus den Eintraegen in utmp/wtmp 
+des Systems entnommen (vergleiche Ausgabe des Kommandos "w").
+
+
