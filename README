@@ -3,8 +3,22 @@
 PC/SC Proxy
 ===========
 
+Dieses Projekt ermoeglicht es grundsaetzlich, von einem Rechner aus die
+via PC/SC angebotenen Lesegeraete an einem anderen Rechner zu nutzen.
+
+
+1. Anwendungsmoeglichkeiten
+---------------------------
+
+Es gibt grundsaetzlich zwei Anwendungsmoeglichkeiten.
+
+
+1.1. Verwendung an Thin-Clients und Terminalserver
+--------------------------------------------------
+
 Dieses Projekt ermoeglicht es einem Thin-Client seine angeschlossenen Leser
-auch in einer Login-Session auf einem Server zu verwenden.
+auch in einer Login-Session auf einem Server zu verwenden. Es entstand im
+Auftrag der Stadt Mansfeld.
 
 Dazu leuft auf dem Thin-client der mitgelieferte PC/SC-Proxy-Dienst. Sobald
 der Benutzer sich am Server anmeldet und dort eine Anwendung aufruft, welche
@@ -23,8 +37,26 @@ Dieses Projekt besteht somit aus zwei Teilen:
 
 
 
-Installation
-============
+1.2. Verwendung in virtuellen Maschinen
+---------------------------------------
+
+Sie koennen aber auch durch Einsatz dieses Projektes aus einer virtuellen 
+Maschine (z.B. in VirtualBox, VMWare etc) heraus auf die Kartenleser des
+Hosts zugreifen.
+
+Dazu muessen Sie innerhalb der Sitzung auf einer virtuellen Maschine die
+Umgebungsvariable "PCSC_SERVER" auf die IP-Adresse des Hosts setzen.
+
+
+
+
+2. Installation
+================
+
+
+2.1. Anwendungsfall 1: Thin-Clients und Terminal-Server
+-------------------------------------------------------
+
 
 Auf ein und demselben System darf nicht die Ersatz-Bibliothek *und* der
 PC/SC-Proxy-Dienst installiert werden! 
@@ -55,8 +87,26 @@ installiert sein.
 
 
 
-Arbeitsweise
-============
+2.2. Anwendungsfall 2: Virtuellen Maschine
+------------------------------------------
+
+Hier muss auf der virtuellen Maschine libpcsclite.so installiert werden.
+Auf dem Host muss dann der PC/SC-Proxy-Dienst gestartet werden, mit dem
+sich das System in der virtuellen Maschine verbindet.
+
+===========================================================================
+II  AUF DEM HOST SOLLTE DAHER *NUR* IM VERZEICHNIS                       II
+II                       "src/server"                                    II
+II  EIN                                                                  II
+II                        "make install"                                 II
+II  AUSGEFUEHRT WERDEN!!                                                 II
+===========================================================================
+
+
+
+
+3. Arbeitsweise
+===============
 
 Sobald eine Anwendung SCardEstablishContext() aufruft (diese Funktion dient
 dem Aufbau einer Verbindung zum PC/SC-Dienst) wird durch die Ersatzbibliothek
@@ -65,6 +115,9 @@ hergestellt. Ab dann - bis zum Aufruf von SCardReleaseContext() - werden
 alle PC/SC-Funktionsaufrufe an den Dienst auf dem Thin-Client weitergeleitet,
 
 Die Adresse des jeweiligen Thin-Clients wird aus den Eintraegen in utmp/wtmp 
-des Systems entnommen (vergleiche Ausgabe des Kommandos "w").
+des Systems entnommen (vergleiche Ausgabe des Kommandos "w"), bzw. im Falle
+einer Anwendung mit virtuellen Maschinen der Umgebungsvariablen "PCSC_SERVER".
 
 
+
+Hamburg, 23.4.2010
