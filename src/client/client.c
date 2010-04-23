@@ -348,50 +348,59 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
     }
     else {
       char hostname[256];
-      char terminal[256];
-      struct utmp *u_tmp_p;
-      const char *ttyName=NULL;
-  
-      ttyName=ttyname(0);
-      if (ttyName==NULL)
-	ttyName=ttyname(1);
-      if (ttyName==NULL)
-	ttyName=ttyname(2);
-      if (ttyName==NULL) {
-	DEBUGPE("ERROR: Unable to determine the controlling terminal");
-	return -1;
+      const char *s;
+
+      s=getenv("PCSC_SERVER");
+      if (s && *s) {
+	strncpy(hostname, s, sizeof(hostname)-1);
+	hostname[sizeof(hostname)-1]=0;
       }
-      if (strlen(ttyName)>4)
-	strncpy(terminal, ttyName+5, sizeof(terminal)-1);
-      terminal[sizeof(terminal)-1]=0;
-  
-      /* determine remote ip using getutent */
-      //utmpname(_PATH_UTMP);
-      setutent();  /* rewind file */
-  
-      DEBUGPI("INFO: Looking for UT for terminal [%s]\n", terminal);
-      while ((u_tmp_p = getutent()) != NULL) {
-	if (u_tmp_p->ut_type==USER_PROCESS &&
-	    u_tmp_p->ut_line[0] &&
-	    strcasecmp(u_tmp_p->ut_line, terminal)==0)
-	  break;
-      }
-  
-      if (u_tmp_p==NULL) {
-	DEBUGPE("ERROR: getutent(): %d=%s\n", errno, strerror(errno));
+      else {
+	char terminal[256];
+	struct utmp *u_tmp_p;
+	const char *ttyName=NULL;
+    
+	ttyName=ttyname(0);
+	if (ttyName==NULL)
+	  ttyName=ttyname(1);
+	if (ttyName==NULL)
+	  ttyName=ttyname(2);
+	if (ttyName==NULL) {
+	  DEBUGPE("ERROR: Unable to determine the controlling terminal");
+	  return -1;
+	}
+	if (strlen(ttyName)>4)
+	  strncpy(terminal, ttyName+5, sizeof(terminal)-1);
+	terminal[sizeof(terminal)-1]=0;
+    
+	/* determine remote ip using getutent */
+	//utmpname(_PATH_UTMP);
+	setutent();  /* rewind file */
+    
+	DEBUGPI("INFO: Looking for UT for terminal [%s]\n", terminal);
+	while ((u_tmp_p = getutent()) != NULL) {
+	  if (u_tmp_p->ut_type==USER_PROCESS &&
+	      u_tmp_p->ut_line[0] &&
+	      strcasecmp(u_tmp_p->ut_line, terminal)==0)
+	    break;
+	}
+    
+	if (u_tmp_p==NULL) {
+	  DEBUGPE("ERROR: getutent(): %d=%s\n", errno, strerror(errno));
+	  endutent();
+	  return -1;
+	}
+	if (u_tmp_p->ut_host[0]==0) {
+	  DEBUGPE("ERROR: Unable to determine remote host from utmp\n");
+	  endutent();
+	  return -1;
+	}
+	DEBUGPI("INFO: User is logged in from [%s]\n", u_tmp_p->ut_host);
+	strncpy(hostname, u_tmp_p->ut_host, sizeof(hostname)-1);
+	hostname[sizeof(hostname)-1]=0;
 	endutent();
-	return -1;
       }
-      if (u_tmp_p->ut_host[0]==0) {
-	DEBUGPE("ERROR: Unable to determine remote host from utmp\n");
-	endutent();
-	return -1;
-      }
-      DEBUGPI("INFO: User is logged in from [%s]\n", u_tmp_p->ut_host);
-      strncpy(hostname, u_tmp_p->ut_host, sizeof(hostname)-1);
-      hostname[sizeof(hostname)-1]=0;
-      endutent();
-  
+
       /* connect */
       rv=pp_connect_by_ip(hostname, PP_TCP_PORT);
       if (rv<0) {
