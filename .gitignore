@@ -25,3 +25,4 @@ missing
 stamp-h1
 src/client/pcsctest
 src/server/pcsc-proxy
+pcsc-proxy-*.tar.gz
