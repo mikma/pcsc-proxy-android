@@ -676,7 +676,7 @@ static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
     return 1;
   }
   else if (rv<0) {
-    DEBUGPE("ERROR: Could not receive message\n");
+    DEBUGPI("INFO: Could not receive message\n");
     return rv;
   }
 
