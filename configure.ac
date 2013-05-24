@@ -8,7 +8,7 @@ AC_CANONICAL_TARGET([])
 AC_CONFIG_SRCDIR([src/common/network.c])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([pcsc-proxy], [2.0], [martin@libchipcard.de])
+AM_INIT_AUTOMAKE([pcsc-proxy], [2.0.1], [martin@libchipcard.de])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
