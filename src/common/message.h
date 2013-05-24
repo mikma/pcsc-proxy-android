@@ -392,7 +392,9 @@ typedef struct s_message s_message;
   sizeof(tp))
 
 
-#define SCARD_F_INTERNAL_ERROR  0x80100001
+#ifndef SCARD_F_INTERNAL_ERROR
+# define SCARD_F_INTERNAL_ERROR  0x80100001
+#endif
 
 
 const char *pp_getMsgTypeText(int t);
