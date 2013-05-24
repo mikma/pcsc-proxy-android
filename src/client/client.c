@@ -58,9 +58,9 @@
 
 
 
-//PP_EXPORT SCARD_IO_REQUEST g_rgSCardT0Pci = { SCARD_PROTOCOL_T0, 8 };	/**< Protocol Control Information for T=0 */
-//PP_EXPORT SCARD_IO_REQUEST g_rgSCardT1Pci = { SCARD_PROTOCOL_T1, 8 };	/**< Protocol Control Information for T=1 */
-//PP_EXPORT SCARD_IO_REQUEST g_rgSCardRawPci = { SCARD_PROTOCOL_RAW, 8 };	/**< Protocol Control Information for raw access */
+PP_EXPORT SCARD_IO_REQUEST g_rgSCardT0Pci = { SCARD_PROTOCOL_T0, sizeof(SCARD_IO_REQUEST) };	/**< Protocol Control Information for T=0 */
+PP_EXPORT SCARD_IO_REQUEST g_rgSCardT1Pci = { SCARD_PROTOCOL_T1, sizeof(SCARD_IO_REQUEST) };	/**< Protocol Control Information for T=1 */
+PP_EXPORT SCARD_IO_REQUEST g_rgSCardRawPci = { SCARD_PROTOCOL_RAW, sizeof(SCARD_IO_REQUEST) };	/**< Protocol Control Information for raw access */
 
 
 struct PP_CLIENT_CONTEXT {
@@ -91,8 +91,6 @@ static PP_CARD_CONTEXT *pp_card_array=NULL;
 
 static pthread_mutex_t pp_context_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t pp_card_mutex=PTHREAD_MUTEX_INITIALIZER;
-
-
 
 
 static PP_CLIENT_CONTEXT *pp_findContext(uint32_t id) {
