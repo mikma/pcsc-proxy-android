@@ -25,7 +25,6 @@ if test "$OSYSTEM" != "windows" ; then
   AC_MSG_RESULT($enable_pcsc)
 
   if test "$enable_pcsc" != "no"; then
-
     dnl ******* pcsc includes ***********
     AC_MSG_CHECKING(for pcsc includes)
     if test "$OSYSTEM" != "windows" ; then
@@ -58,7 +57,8 @@ if test "$OSYSTEM" != "windows" ; then
 
     AC_ARG_WITH(pcsc-libs, [  --with-pcsc-libs=DIR  adds pcsc library path],
       [pcsc_search_lib_dirs="$withval"],
-      [pcsc_search_lib_dirs="/usr/lib \
+      [pcsc_search_lib_dirs="/usr/lib/`uname -m`-linux-gnu \
+                          /usr/lib \
             	          /usr/local/lib \
                           /usr/lib/pcsc/lib \
 	                  /usr/local/pcsc/lib \
