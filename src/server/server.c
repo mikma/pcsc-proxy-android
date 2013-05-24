@@ -179,7 +179,7 @@ static int handleIsValidContext(s_message *msg) {
 }
 
 
-
+/*
 static int handleSetTimeout(s_message *msg) {
   LONG res;
 
@@ -189,6 +189,7 @@ static int handleSetTimeout(s_message *msg) {
   msg->setTimeoutStruct.rv=res;
   return 0;
 }
+*/
 
 
 
@@ -273,7 +274,7 @@ static int handleCancelTransaction(s_message *msg) {
   LONG res;
 
   DEBUGPI("INFO: CancelTransaction\n");
-  res=SCardCancelTransaction(msg->cancelStruct.hCard);
+  res=SCardCancel(msg->cancelStruct.hCard);
   msg->cancelStruct.rv=res;
   return 0;
 }
@@ -316,18 +317,18 @@ static int handleStatus(s_message *msg) {
 
 static int handleGetStatusChange(s_message *msg) {
   LONG res;
-  LPSCARD_READERSTATE_A rgReaderStates=NULL;
+  LPSCARD_READERSTATE rgReaderStates=NULL;
 
-  DEBUGPI("INFO: GetStatusChange (sizeof SCARD_READERSTATE_A: %d)\n",
-	 (int)(sizeof(SCARD_READERSTATE_A)));
+  DEBUGPI("INFO: GetStatusChange (sizeof SCARD_READERSTATE: %d)\n",
+	 (int)(sizeof(SCARD_READERSTATE)));
   if (msg->getStatusChangeStruct.cReaders) {
     uint32_t i;
-    LPSCARD_READERSTATE_A pDst;
+    LPSCARD_READERSTATE pDst;
     s_readerstate *pSrc;
 
-    rgReaderStates=(LPSCARD_READERSTATE_A) malloc(sizeof(SCARD_READERSTATE_A)*
+    rgReaderStates=(LPSCARD_READERSTATE) malloc(sizeof(SCARD_READERSTATE)*
 						  msg->getStatusChangeStruct.cReaders);
-    memset(rgReaderStates, 0, sizeof(SCARD_READERSTATE_A)*msg->getStatusChangeStruct.cReaders);
+    memset(rgReaderStates, 0, sizeof(SCARD_READERSTATE)*msg->getStatusChangeStruct.cReaders);
 
     pDst=rgReaderStates;
     pSrc=msg->getStatusChangeStruct.readerStates;
@@ -377,7 +378,7 @@ static int handleGetStatusChange(s_message *msg) {
   if (msg->getStatusChangeStruct.cReaders) {
     uint32_t i;
     s_readerstate *pDst;
-    LPSCARD_READERSTATE_A pSrc;
+    LPSCARD_READERSTATE pSrc;
 
     pSrc=rgReaderStates;
     pDst=msg->getStatusChangeStruct.readerStates;
@@ -691,7 +692,7 @@ static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
     rv=handleIsValidContext(&m.msg);
     break;
   case SCARD_SETTIMEOUT:
-    rv=handleSetTimeout(&m.msg);
+    //rv=handleSetTimeout(&m.msg);
     break;
   case SCARD_CONNECT:
     rv=handleConnect(&m.msg);

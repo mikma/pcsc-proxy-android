@@ -58,9 +58,9 @@
 
 
 
-PP_EXPORT SCARD_IO_REQUEST g_rgSCardT0Pci = { SCARD_PROTOCOL_T0, 8 };	/**< Protocol Control Information for T=0 */
-PP_EXPORT SCARD_IO_REQUEST g_rgSCardT1Pci = { SCARD_PROTOCOL_T1, 8 };	/**< Protocol Control Information for T=1 */
-PP_EXPORT SCARD_IO_REQUEST g_rgSCardRawPci = { SCARD_PROTOCOL_RAW, 8 };	/**< Protocol Control Information for raw access */
+//PP_EXPORT SCARD_IO_REQUEST g_rgSCardT0Pci = { SCARD_PROTOCOL_T0, 8 };	/**< Protocol Control Information for T=0 */
+//PP_EXPORT SCARD_IO_REQUEST g_rgSCardT1Pci = { SCARD_PROTOCOL_T1, 8 };	/**< Protocol Control Information for T=1 */
+//PP_EXPORT SCARD_IO_REQUEST g_rgSCardRawPci = { SCARD_PROTOCOL_RAW, 8 };	/**< Protocol Control Information for raw access */
 
 
 struct PP_CLIENT_CONTEXT {
@@ -961,7 +961,7 @@ PP_EXPORT LONG SCardStatus(SCARDHANDLE hCard,
 
 PP_EXPORT LONG SCardGetStatusChange(SCARDCONTEXT hContext,
 				    DWORD dwTimeout,
-				    LPSCARD_READERSTATE_A rgReaderStates,
+				    LPSCARD_READERSTATE rgReaderStates,
 				    DWORD cReaders) {
   union {
     char buffer[PP_MAX_MESSAGE_LEN];
@@ -995,7 +995,7 @@ PP_EXPORT LONG SCardGetStatusChange(SCARDCONTEXT hContext,
   if (cReaders) {
     uint32_t i;
     s_readerstate *pDst;
-    LPSCARD_READERSTATE_A pSrc;
+    LPSCARD_READERSTATE pSrc;
 
     if (m.msg.header.len+sizeof(s_readerstate)>PP_MAX_MESSAGE_LEN) {
       DEBUGPE("ERROR: Too many reader states.\n");
@@ -1042,7 +1042,7 @@ PP_EXPORT LONG SCardGetStatusChange(SCARDCONTEXT hContext,
 
   if (cReaders) {
     uint32_t i;
-    LPSCARD_READERSTATE_A pDst;
+    LPSCARD_READERSTATE pDst;
     s_readerstate *pSrc;
 
     pDst=rgReaderStates;
@@ -1689,7 +1689,7 @@ PP_EXPORT char *pcsc_stringify_error(const long pcscError) {
   case SCARD_W_REMOVED_CARD:
     (void)strncpy(strError, "Card was removed.", sizeof(strError));
     break;
-  case SCARD_W_INSERTED_CARD:
+  case SCARD_STATE_PRESENT:
     (void)strncpy(strError, "Card was inserted.", sizeof(strError));
     break;
   case SCARD_E_UNSUPPORTED_FEATURE:
