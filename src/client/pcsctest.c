@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #ifdef ENABLE_DEBUG
@@ -92,12 +93,14 @@ int test2(int argc, char **argv) {
     DEBUGP("ERROR: here (%08x)\n", (int) rv);
     return 2;
   }
+  dwReaders = NULL;
   rv = SCardListReaders(hContext, NULL, NULL, &dwReaders);
   if (rv!=SCARD_S_SUCCESS && rv!=SCARD_E_INSUFFICIENT_BUFFER) {
     DEBUGP("ERROR: here (%08x)\n", (int) rv);
     return 2;
   }
   mszReaders = malloc(sizeof(char)*dwReaders);
+  memset(mszReaders, 0, sizeof(char)*dwReaders);
   rv = SCardListReaders(hContext, NULL, mszReaders, &dwReaders);
   if (rv!=SCARD_S_SUCCESS) {
     DEBUGP("ERROR: here (%08x)\n", (int) rv);
@@ -109,6 +112,13 @@ int test2(int argc, char **argv) {
   while(*p) {
     fprintf(stdout, " %s\n", p);
     while(*(p++));
+  }
+  free(mszReaders);
+
+  rv = SCardReleaseContext(hContext);
+  if (rv!=SCARD_S_SUCCESS) {
+    DEBUGP("ERROR: here (%08x)\n", (int) rv);
+    return 2;
   }
 
   return 0;
