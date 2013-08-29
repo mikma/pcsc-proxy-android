@@ -664,7 +664,7 @@ static int handleListGroups(s_message *msg) {
 
 
 
-static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
+static int pp_nextMsg(PP_TLS_SESSION *session) {
   union {
     char buffer[PP_MAX_MESSAGE_LEN];
     s_message msg;
@@ -672,7 +672,7 @@ static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
   int rv;
 
   /* recv message from client */
-  rv=pp_tls_recv(ctx->session, &m.msg);
+  rv=pp_tls_recv(session, &m.msg);
   if (rv==0) {
     return 1;
   }
@@ -745,7 +745,7 @@ static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
     exit(4);
   }
 
-  rv=pp_tls_send(ctx->session, &m.msg);
+  rv=pp_tls_send(session, &m.msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not send message\n");
     return rv;
@@ -756,11 +756,11 @@ static int pp_nextMsg(PP_TLS_SERVER_CONTEXT *ctx) {
 
 
 
-static int pp_handleConnection(PP_TLS_SERVER_CONTEXT *ctx) {
+static int pp_handleConnection(PP_TLS_SESSION *session) {
   int rv=0;
 
   for (;;) {
-    rv=pp_nextMsg(ctx);
+    rv=pp_nextMsg(session);
     if (rv)
       break;
   }
@@ -774,7 +774,7 @@ int main(int argc, char **argv) {
   int sk;
   int rv;
   const char *addr="0.0.0.0";
-  PP_TLS_SERVER_CONTEXT ctx;
+  PP_TLS_SERVER_CONTEXT *ctx = NULL;
 
   rv=setSignalHandler();
   if (rv) {
@@ -801,6 +801,7 @@ int main(int argc, char **argv) {
   }
 
   while(!pp_daemon_abort) {
+    PP_TLS_SESSION *session = NULL;
     int newS;
 
     newS=pp_accept(sk);
@@ -822,14 +823,13 @@ int main(int argc, char **argv) {
 	  exit(2);
 	}
 
-        ctx.socket=newS;
-	rv=pp_init_server_session(&ctx);
+	rv=pp_init_server_session(ctx, &session, newS);
 	if (rv<0) {
 	  DEBUGPE("ERROR: Could not setup server session.\n");
 	  exit(2);
 	}
 
-	rv=pp_handleConnection(&ctx);
+	rv=pp_handleConnection(session);
 	if (rv)
 	  exit(3);
 	exit(0);

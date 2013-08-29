@@ -45,7 +45,26 @@
 
 
 
-int pp_init_server(PP_TLS_SERVER_CONTEXT *ctx){
+struct PP_TLS_SERVER_CONTEXT {
+  gnutls_dh_params_t dh_params;
+  gnutls_anon_server_credentials_t anoncred;
+};
+
+
+struct PP_TLS_CLIENT_CONTEXT {
+  gnutls_anon_client_credentials_t anoncred;
+};
+
+struct PP_TLS_SESSION {
+  gnutls_session_t gnutls;
+  int socket;
+};
+
+
+int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
+  PP_TLS_SERVER_CONTEXT *ctx = malloc(sizeof(PP_TLS_SERVER_CONTEXT));
+  memset(ctx, 0, sizeof(*ctx));
+
   gnutls_global_init ();
 
   gnutls_dh_params_init (&(ctx->dh_params));
@@ -54,6 +73,7 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT *ctx){
   gnutls_anon_allocate_server_credentials (&(ctx->anoncred));
   gnutls_anon_set_server_dh_params(ctx->anoncred, ctx->dh_params);
 
+  *ctx_p = ctx;
   return 0;
 }
 
@@ -63,34 +83,40 @@ int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
   gnutls_anon_free_server_credentials (ctx->anoncred);
   gnutls_global_deinit();
 
+  free(ctx);
   return 0;
 }
 
 
 
-int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx){
+int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   int ret;
+  PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
+  memset(session, 0, sizeof(*session));
 
-  gnutls_init (&(ctx->session), GNUTLS_SERVER);
-  gnutls_priority_set_direct(ctx->session, "NORMAL:+ANON-DH", NULL);
-  gnutls_credentials_set(ctx->session, GNUTLS_CRD_ANON, ctx->anoncred);
-  gnutls_dh_set_prime_bits(ctx->session, DH_BITS);
+  session->socket = sock;
+  gnutls_init (&(session->gnutls), GNUTLS_SERVER);
+  gnutls_priority_set_direct(session->gnutls, "NORMAL:+ANON-DH", NULL);
+  gnutls_credentials_set(session->gnutls, GNUTLS_CRD_ANON, ctx->anoncred);
+  gnutls_dh_set_prime_bits(session->gnutls, DH_BITS);
 
-  gnutls_transport_set_ptr(ctx->session, (gnutls_transport_ptr_t) ((unsigned long int)(ctx->socket)));
-  ret=gnutls_handshake(ctx->session);
+  gnutls_transport_set_ptr(session->gnutls, (gnutls_transport_ptr_t) ((unsigned long int)(session->socket)));
+  ret=gnutls_handshake(session->gnutls);
   if (ret < 0) {
+    free(session);
     DEBUGPE("ERROR: Handshake failed (%s)\n",
 	   gnutls_strerror(ret));
     return -1;
   }
 
+  *session_p = session;
   return 0;
 }
 
 
 
-int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx){
-  gnutls_deinit(ctx->session);
+int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
+  gnutls_deinit(session->gnutls);
   return 0;
 }
 
@@ -99,10 +125,13 @@ int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx){
 
 
 
-int pp_init_client(PP_TLS_CLIENT_CONTEXT *ctx){
+int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
+  PP_TLS_CLIENT_CONTEXT *ctx = malloc(sizeof(PP_TLS_CLIENT_CONTEXT));
+  memset(ctx, 0, sizeof(*ctx));
+
   gnutls_global_init ();
   gnutls_anon_allocate_client_credentials (&(ctx->anoncred));
-  ctx->socket=-1;
+  *ctx_p = ctx;
   return 0;
 }
 
@@ -112,34 +141,41 @@ int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
   gnutls_anon_free_client_credentials (ctx->anoncred);
   gnutls_global_deinit();
 
+  free(ctx);
   return 0;
 }
 
 
 
-int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx){
+int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   int ret;
+  PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
+  memset(session, 0, sizeof(*session));
 
-  gnutls_init(&(ctx->session), GNUTLS_CLIENT);
-  gnutls_priority_set_direct(ctx->session, "NORMAL:+ANON-DH", NULL);
-  gnutls_credentials_set(ctx->session, GNUTLS_CRD_ANON, ctx->anoncred);
-  gnutls_dh_set_prime_bits(ctx->session, DH_BITS);
+  session->socket = sock;
+  gnutls_init(&(session->gnutls), GNUTLS_CLIENT);
+  gnutls_priority_set_direct(session->gnutls, "NORMAL:+ANON-DH", NULL);
+  gnutls_credentials_set(session->gnutls, GNUTLS_CRD_ANON, ctx->anoncred);
+  gnutls_dh_set_prime_bits(session->gnutls, DH_BITS);
 
-  gnutls_transport_set_ptr(ctx->session, (gnutls_transport_ptr_t) ((unsigned long int)(ctx->socket)));
-  ret=gnutls_handshake(ctx->session);
+  gnutls_transport_set_ptr(session->gnutls, (gnutls_transport_ptr_t) ((unsigned long int)(session->socket)));
+  ret=gnutls_handshake(session->gnutls);
   if (ret<0) {
+    free(session);
     DEBUGPE("ERROR: Handshake failed (%s)\n",
 	    gnutls_strerror(ret));
     return -1;
   }
 
+  *session_p = session;
   return 0;
 }
 
 
 
-int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx){
-  gnutls_deinit(ctx->session);
+int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
+  gnutls_deinit(session->gnutls);
+  free(session);
   return 0;
 }
 
@@ -150,7 +186,7 @@ int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx){
 
 
 
-int pp_tls_recv(gnutls_session_t session, s_message *msg) {
+int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
   char *p;
   int bytesRead;
 
@@ -164,7 +200,7 @@ int pp_tls_recv(gnutls_session_t session, s_message *msg) {
     ssize_t i;
 
     i=sizeof(s_msg_header)-bytesRead;
-    i=gnutls_record_recv(session, p, i);
+    i=gnutls_record_recv(session->gnutls, p, i);
     if (i<0) {
       if (errno!=EINTR) {
 	DEBUGPE("ERROR: read(): %d=%s\n", (int) i, gnutls_strerror(i));
@@ -200,7 +236,7 @@ int pp_tls_recv(gnutls_session_t session, s_message *msg) {
     ssize_t i;
 
     i=msg->header.len-bytesRead;
-    i=gnutls_record_recv(session, p, i);
+    i=gnutls_record_recv(session->gnutls, p, i);
     if (i<0) {
       DEBUGPE("ERROR: read(): %d=%s\n", (int) i, gnutls_strerror(i));
       return -1;
@@ -220,7 +256,7 @@ int pp_tls_recv(gnutls_session_t session, s_message *msg) {
 
 
 
-int pp_tls_send(gnutls_session_t session, const s_message *msg) {
+int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
   int bytesLeft;
   const uint8_t *p;
 
@@ -235,7 +271,7 @@ int pp_tls_send(gnutls_session_t session, const s_message *msg) {
   while(bytesLeft) {
     ssize_t i;
 
-    i=gnutls_record_send(session, (const void*)p, bytesLeft);
+    i=gnutls_record_send(session->gnutls, (const void*)p, bytesLeft);
 
     /* evaluate */
     if (i<0) {
@@ -255,6 +291,11 @@ int pp_tls_send(gnutls_session_t session, const s_message *msg) {
   return 0;
 }
 
+
+int pp_tls_get_socket(PP_TLS_SESSION *session)
+{
+  return session->socket;
+}
 
 
 

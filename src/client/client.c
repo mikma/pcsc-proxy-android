@@ -66,7 +66,8 @@ PP_EXPORT const SCARD_IO_REQUEST g_rgSCardRawPci = { SCARD_PROTOCOL_RAW, sizeof(
 struct PP_CLIENT_CONTEXT {
   uint32_t id;
   uint32_t pcScContext;
-  PP_TLS_CLIENT_CONTEXT tlsContext;
+  PP_TLS_CLIENT_CONTEXT *tlsContext;
+  PP_TLS_SESSION *tlsSession;
 };
 typedef struct PP_CLIENT_CONTEXT PP_CLIENT_CONTEXT;
 
@@ -338,7 +339,7 @@ static void pp_releaseCard(uint32_t id) {
 static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
   int rv;
 
-  if (ctx->tlsContext.socket==-1) {
+  if (ctx->tlsSession == NULL) {
     if (msg->header.type!=SCARD_ESTABLISH_CONTEXT) {
 	DEBUGPE("ERROR: Socket not connected when trying to send [%s]\n",
 	       pp_getMsgTypeText(msg->header.type));
@@ -347,6 +348,7 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
     else {
       char hostname[256];
       const char *s;
+      int sock;
 
       s=getenv("PCSC_SERVER");
       if (s && *s) {
@@ -406,26 +408,25 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	return rv;
       }
       DEBUGPI("INFO: Connected.\n");
-      ctx->tlsContext.socket=rv;
+      sock=rv;
 
       /* setup tls */
-      rv=pp_init_client_session(&(ctx->tlsContext));
+      rv=pp_init_client_session(ctx->tlsContext, &(ctx->tlsSession), sock);
       if (rv<0) {
 	DEBUGPE("ERROR: Unable to establish TLS connection.\n");
-	close(ctx->tlsContext.socket);
-        ctx->tlsContext.socket=-1;
+	close(sock);
 	return rv;
       }
     }
   }
 
-  rv=pp_tls_send(ctx->tlsContext.session, msg);
+  rv=pp_tls_send(ctx->tlsSession, msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not send message\n");
     return rv;
   }
 
-  rv=pp_tls_recv(ctx->tlsContext.session, msg);
+  rv=pp_tls_recv(ctx->tlsSession, msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not receive message\n");
     return rv;
@@ -491,6 +492,7 @@ PP_EXPORT LONG SCardReleaseContext(SCARDCONTEXT hContext) {
   } m;
   int rv;
   PP_CLIENT_CONTEXT *ctx;
+  int sock;
 
   DEBUGPI("INFO: Entering here\n");
 
@@ -512,10 +514,12 @@ PP_EXPORT LONG SCardReleaseContext(SCARDCONTEXT hContext) {
   /* exchange */
   rv=pp_exchangeMsg(ctx, &(m.msg));
   DEBUGPI("INFO: Closing connection\n");
-  pp_fini_client_session(&(ctx->tlsContext));
-  close(ctx->tlsContext.socket);
-  ctx->tlsContext.socket=-1;
-  pp_fini_client(&(ctx->tlsContext));
+  sock = pp_tls_get_socket(ctx->tlsSession);
+  pp_fini_client_session(ctx->tlsContext, ctx->tlsSession);
+  ctx->tlsSession = NULL;
+  close(sock);
+  pp_fini_client(ctx->tlsContext);
+  ctx->tlsContext = NULL;
   pp_releaseContext(ctx->id);
   if (rv<0) {
     return SCARD_F_INTERNAL_ERROR;
@@ -986,9 +990,9 @@ PP_EXPORT LONG SCardGetStatusChange(SCARDCONTEXT hContext,
   m.msg.getStatusChangeStruct.hContext=ctx->pcScContext;
   m.msg.getStatusChangeStruct.dwTimeout=dwTimeout;
   m.msg.getStatusChangeStruct.cReaders=cReaders;
-  DEBUGPI("INFO: Will ask for changes on %d readers (sizeof SCARD_READERSTATE_A: %d)\n",
+  DEBUGPI("INFO: Will ask for changes on %d readers (sizeof SCARD_READERSTATE: %d)\n",
 	 (unsigned int) cReaders,
-	 (int)(sizeof(SCARD_READERSTATE_A)));
+	 (int)(sizeof(SCARD_READERSTATE)));
 
   if (cReaders) {
     uint32_t i;

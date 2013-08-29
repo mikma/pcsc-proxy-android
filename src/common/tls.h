@@ -30,58 +30,47 @@
 
 #include "message.h"
 
-#include <gnutls/gnutls.h>
 
 
 
 #define DH_BITS 1024
 
 
-
-struct PP_TLS_SERVER_CONTEXT {
-  gnutls_session_t session;
-  gnutls_dh_params_t dh_params;
-  gnutls_anon_server_credentials_t anoncred;
-  int socket;
-};
 typedef struct PP_TLS_SERVER_CONTEXT PP_TLS_SERVER_CONTEXT;
+typedef struct PP_TLS_CLIENT_CONTEXT PP_TLS_CLIENT_CONTEXT;
+typedef struct PP_TLS_SESSION PP_TLS_SESSION;
 
 
 /**
  * Call this once at the start of the server.
  */
-int pp_init_server(PP_TLS_SERVER_CONTEXT *ctx);
+int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx);
 int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx);
 
 /**
  * Call this for every session.
  */
-int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx);
+int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session, int sock);
 
-int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx);
-
-
-
-struct PP_TLS_CLIENT_CONTEXT {
-  gnutls_session_t session;
-  gnutls_anon_client_credentials_t anoncred;
-  int socket;
-};
-typedef struct PP_TLS_CLIENT_CONTEXT PP_TLS_CLIENT_CONTEXT;
+int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session);
 
 
-int pp_init_client(PP_TLS_CLIENT_CONTEXT *ctx);
+
+
+
+int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx);
 int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx);
 
-int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx);
-int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx);
+int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session, int sock);
+int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session);
 
 
 
 
 
-int pp_tls_recv(gnutls_session_t session, s_message *msg);
-int pp_tls_send(gnutls_session_t session, const s_message *msg);
+int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg);
+int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg);
+int pp_tls_get_socket(PP_TLS_SESSION *session);
 
 
 
