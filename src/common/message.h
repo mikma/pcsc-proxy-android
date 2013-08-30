@@ -43,26 +43,45 @@
 
 #include <pcsclite.h>
 
+#ifdef ANDROID
+# include <android/log.h>
+#endif
+
 
 #ifdef ENABLE_DEBUGPE
-# define DEBUGPE(format, args...) \
-    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args);
+# ifdef ANDROID
+#  define DEBUGPE(format, args...) \
+    __android_log_print(ANDROID_LOG_ERROR, PACKAGE_NAME, __FILE__":%5d:" format, __LINE__, ## args)
+# else
+#  define DEBUGPE(format, args...) \
+    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args)
+# endif
 #else
 # define DEBUGPE(format, args...)
 #endif
 
 
 #ifdef ENABLE_DEBUGPI
-# define DEBUGPI(format, args...) \
-    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args);
+# ifdef ANDROID
+#  define DEBUGPI(format, args...) \
+    __android_log_print(ANDROID_LOG_INFO, PACKAGE_NAME, __FILE__":%5d:" format, __LINE__, ## args)
+# else
+#  define DEBUGPI(format, args...) \
+    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args)
+# endif
 #else
 # define DEBUGPI(format, args...)
 #endif
 
 
 #ifdef ENABLE_DEBUGPD
-# define DEBUGPD(format, args...) \
-    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args);
+# ifdef ANDROID
+#  define DEBUGPD(format, args...) \
+    __android_log_print(ANDROID_LOG_DEBUG, PACKAGE_NAME, __FILE__":%5d:" format, __LINE__, ## args)
+# else
+#  define DEBUGPD(format, args...) \
+    fprintf(stderr, __FILE__":%5d:" format, __LINE__, ## args)
+# endif
 #else
 # define DEBUGPD(format, args...)
 #endif
