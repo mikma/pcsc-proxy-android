@@ -44,9 +44,22 @@ AC_CHECK_FUNCS([gethostbyname memmove memset socket strcasecmp strerror utmpname
 
 ###-------------------------------------------------------------------------
 #
-# check for libgnutls
+# check for libgnutls/openssl
 #
-PKG_CHECK_MODULES([LIBGNUTLS], [gnutls])
+AC_ARG_ENABLE(openssl,
+  [  --enable-openssl                enable openssl (default=no)],
+  enable_openssl="$enableval",
+  enable_openssl="no")
+
+# Required since the first call to PKG_CHECK_MODULES might not happen
+PKG_PROG_PKG_CONFIG
+if test "$enable_openssl" = "yes"; then
+  PKG_CHECK_MODULES([OPENSSL], [openssl])
+else
+  PKG_CHECK_MODULES([LIBGNUTLS], [gnutls])
+fi
+AM_CONDITIONAL([OPENSSL], [test "$enable_openssl" = "yes"])
+AM_CONDITIONAL([LIBGNUTLS], [test "$enable_openssl" = "no"])
 
 
 

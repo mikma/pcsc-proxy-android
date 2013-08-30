@@ -11,7 +11,15 @@ libpcsclite_la_LDFLAGS=-no-undefined \
   -version-info 1:0:0
 
 libpcsclite_la_SOURCES=client.c
-libpcsclite_la_LIBADD=../common/libcommon.la $(PTHREAD_LIBS) $(LIBGNUTLS_LIBS)
+libpcsclite_la_LIBADD=../common/libcommon.la $(PTHREAD_LIBS)
+
+if LIBGNUTLS
+libpcsclite_la_LIBADD += $(LIBGNUTLS_LIBS)
+endif
+
+if OPENSSL
+libpcsclite_la_LIBADD += $(OPENSSL_LIBS)
+endif
 
 noinst_PROGRAMS=pcsctest
 
