@@ -12,6 +12,7 @@ config.sub
 configure
 depcomp
 install-sh
+libs/
 libtool
 ltmain.sh
 missing
@@ -24,4 +25,5 @@ missing
 stamp-h1
 src/client/pcsctest
 src/server/pcsc-proxy
+obj/
 pcsc-proxy-*.tar.gz
