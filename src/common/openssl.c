@@ -164,7 +164,6 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
     DEBUGPE("ERROR: SSL accept failed\n");
     ERR_print_errors_fp(stderr);
     SSL_free(session->ssl);
-    BIO_free(session->bio);
     free(session);
     /* DEBUGPE("ERROR: Handshake failed (%s)\n", */
     /*         SSL_get_error(session->ssl, ret)); */
@@ -180,7 +179,6 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
 int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
   
   SSL_shutdown(session->ssl);
-  BIO_free(session->bio);
   SSL_free(session->ssl);
   free(session);
   return 0;
@@ -259,7 +257,6 @@ int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_
     /*         SSL_get_error(session->ssl, ret)); */
     ERR_print_errors_fp(stderr);
     SSL_free(session->ssl);
-    BIO_free(session->bio);
     free(session);
     return -1;
   }
@@ -273,7 +270,6 @@ int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_
 int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
 
   SSL_shutdown(session->ssl);
-  BIO_free(session->bio);
   SSL_free(session->ssl);
   free(session);
   return 0;
