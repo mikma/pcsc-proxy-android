@@ -2,14 +2,14 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.64])
-AC_INIT
+AC_INIT([pcsc-proxy], [2.0.1], [martin@libchipcard.de])
 AC_CANONICAL_TARGET([])
 
 AC_CONFIG_SRCDIR([src/common/network.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([pcsc-proxy], [2.0.1], [martin@libchipcard.de])
+AM_INIT_AUTOMAKE([])
 
 # Checks for programs.
 AC_PROG_LIBTOOL
