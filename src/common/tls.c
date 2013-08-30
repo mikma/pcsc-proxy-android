@@ -117,6 +117,7 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
 
 int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
   gnutls_deinit(session->gnutls);
+  free(session);
   return 0;
 }
 
