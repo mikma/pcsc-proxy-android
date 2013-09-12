@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <openssl/ssl.h>
+#include <openssl/srp.h>
 
 #include <assert.h>
 #include <string.h>
@@ -44,9 +45,15 @@
 #define ENABLE_DEBUGE
 
 
+#define CIPHER "SRP"
 
 struct PP_TLS_SERVER_CONTEXT {
   SSL_CTX *ssl_ctx;
+#ifndef OPENSSL_NO_SRP
+  SRP_VBASE *srp_vbase;
+  char *srp_vfile;
+  void *srp_unknown_user_seed;
+#endif
 };
 
 
@@ -86,12 +93,63 @@ static DH* setup_dh()
 }
 
 
+#ifndef OPENSSL_NO_SRP
+static int srp_server_param_cb(SSL *ssl, int *ad, void *arg) {
+  SRP_user_pwd *sup = NULL;
+  PP_TLS_SERVER_CONTEXT *ctx = arg;
+
+  if ((sup = SRP_VBASE_get_by_user(ctx->srp_vbase,
+                                   SSL_get_srp_username(ssl))) == NULL) {
+    DEBUGPE("User %s doesn't exist\n", SSL_get_srp_username(ssl));
+    return SSL3_AL_FATAL;
+  }
+
+  if (SSL_set_srp_server_param(ssl, sup->N, sup->g,
+                               sup->s, sup->v, sup->info) < 0) {
+    DEBUGPE("User %s auth failed\n", SSL_get_srp_username(ssl));
+    return SSL3_AL_FATAL;
+  }
+  return SSL_ERROR_NONE;
+}
+
+
+static int srp_init_server(struct PP_TLS_SERVER_CONTEXT *ctx) {
+  if (ctx->srp_vfile != NULL) {
+    int res;
+    DEBUGPD("Use SRP verifier file %s\n", ctx->srp_vfile);
+
+    if (!(ctx->srp_vbase = SRP_VBASE_new(ctx->srp_unknown_user_seed))) {
+      DEBUGPE("Can't initialize SRP verifier %s\n",
+              ctx->srp_unknown_user_seed);
+      return -1;
+    }
+
+    res = SRP_VBASE_init(ctx->srp_vbase, ctx->srp_vfile);
+    if (res != SRP_NO_ERROR) {
+      DEBUGPE("Can't load SRP verifier file  %d\n", res);
+      return -1;
+    }
+  }
+
+  SSL_CTX_set_srp_username_callback(ctx->ssl_ctx, srp_server_param_cb);
+  SSL_CTX_set_srp_cb_arg(ctx->ssl_ctx, ctx);
+  return 0;
+}
+#endif /* OPENSSL_NO_SRP */
+
+
+
 int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
   PP_TLS_SERVER_CONTEXT *ctx = malloc(sizeof(PP_TLS_SERVER_CONTEXT));
   memset(ctx, 0, sizeof(*ctx));
 
-  SSL_library_init();
+#ifndef OPENSSL_NO_SRP
+  ctx->srp_vfile = "/tmp/srp.txt";
+#endif
+
+  OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
+  SSL_library_init();
   ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_server_method());
 
   if (ctx->ssl_ctx == NULL) {
@@ -99,16 +157,22 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
     return -1;
   }
 
-  DH *dh = setup_dh();
-  SSL_CTX_set_tmp_dh(ctx->ssl_ctx, dh);
-
-  if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "ADH-AES256-SHA") < 0){
-    DH_free(dh);
+  if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, CIPHER) < 0){
     DEBUGPE("ERROR: SSL cipher list failed\n");
     ERR_print_errors_fp(stderr);
     free(ctx);
     return -1;
   }
+
+  DH *dh = setup_dh();
+  SSL_CTX_set_tmp_dh(ctx->ssl_ctx, dh);
+
+#ifndef OPENSSL_NO_SRP
+  if (srp_init_server(ctx) < 0) {
+    free(ctx);
+    return -1;
+  }
+#endif
 
   *ctx_p = ctx;
   return 0;
@@ -118,11 +182,16 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
 
 int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
 
+#ifndef OPENSSL_NO_SRP
+  if (ctx->srp_vbase != NULL) {
+    SRP_VBASE_free(ctx->srp_vbase);
+    ctx->srp_vbase = NULL;
+  }
+#endif
   SSL_CTX_free(ctx->ssl_ctx);
   free(ctx);
   return 0;
 }
-
 
 
 int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
@@ -136,13 +205,6 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
   session->ssl = SSL_new(ctx->ssl_ctx);
   if (session->ssl == NULL) {
     DEBUGPE("ERROR: SSL session failed\n");
-    ERR_print_errors_fp(stderr);
-    free(session);
-    return -1;
-  }
-
-  if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "ADH-AES256-SHA") < 0){
-    DEBUGPE("ERROR: SSL cipher list failed\n");
     ERR_print_errors_fp(stderr);
     free(session);
     return -1;
@@ -393,14 +455,3 @@ int pp_tls_get_socket(PP_TLS_SESSION *session)
 {
   return session->socket;
 }
-
-
-
-
-
-
-
-
-
-
-
