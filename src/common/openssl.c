@@ -44,8 +44,8 @@
 
 #define ENABLE_DEBUGE
 
-
-#define CIPHER "SRP"
+#define CIPHER_SRP "SRP"
+#define CIPHER CIPHER_SRP
 
 struct PP_TLS_SERVER_CONTEXT {
   SSL_CTX *ssl_ctx;
@@ -264,18 +264,31 @@ int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
     return -1;
   }
 
-  if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "ADH-AES256-SHA") < 0){
-    DEBUGPE("ERROR: SSL cipher list failed\n");
-    ERR_print_errors_fp(stderr);
-    free(ctx);
-    return -1;
-  }
-
   *ctx_p = ctx;
   return 0;
 }
 
 
+
+int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
+                           char *name, char *password) {
+  if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, CIPHER_SRP) < 0){
+    ERR_print_errors_fp(stderr);
+    return -1;
+  }
+
+  if (SSL_CTX_set_srp_username(ctx->ssl_ctx, name) < 0) {
+    ERR_print_errors_fp(stderr);
+    return -1;
+  }
+
+  if (SSL_CTX_set_srp_password(ctx->ssl_ctx, password) < 0) {
+    ERR_print_errors_fp(stderr);
+    return -1;
+  }
+
+  return 0;
+}
 
 int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
 

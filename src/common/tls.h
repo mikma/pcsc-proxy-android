@@ -60,6 +60,7 @@ int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session);
 
 int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx);
 int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx);
+int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx, char *name, char *password);
 
 int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session, int sock);
 int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session);

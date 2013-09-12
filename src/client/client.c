@@ -135,6 +135,8 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
   uint32_t i;
   uint32_t id;
   int rv;
+  char *user;
+  char *passwd;
 
   DEBUGPI("INFO: Waiting for Context Mutex");
   rv=pthread_mutex_lock(&pp_context_mutex);
@@ -172,6 +174,23 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
   rv=pp_init_client(&(p->tlsContext));
   if (rv<0) {
     DEBUGPE("ERROR: Unable to init TLS context\n");
+    p->id=0;
+    pthread_mutex_unlock(&pp_context_mutex);
+    return NULL;
+  }
+
+  user=getenv("PCSC_USER");
+  passwd=getenv("PCSC_PASSWD");
+
+  if (user==NULL || *user==0 || passwd==NULL || *passwd==0) {
+    DEBUGPE("ERROR: PCSC_USER or PCSC_PASSWD undefined\n");
+    p->id=0;
+    pthread_mutex_unlock(&pp_context_mutex);
+    return NULL;
+  }
+
+  if (pp_client_set_srp_auth(p->tlsContext, user, passwd) < 0) {
+    DEBUGPE("ERROR: Could not use SRP auth\n");
     p->id=0;
     pthread_mutex_unlock(&pp_context_mutex);
     return NULL;
