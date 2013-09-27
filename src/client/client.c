@@ -143,6 +143,7 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
   DEBUGPI("INFO: Got Context Mutex (%d)\n", rv);
   if (rv) {
     DEBUGPE("ERROR: Could not lock mutex (%d)\n", rv);
+    pthread_mutex_unlock(&pp_context_mutex);
     return NULL;
   }
 
@@ -151,6 +152,7 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
     pp_context_array=(PP_CLIENT_CONTEXT*) malloc(sizeof(PP_CLIENT_CONTEXT)*PP_MAX_CONTEXT);
     if (pp_context_array==NULL) {
       DEBUGPE("ERROR: Out of memory\n");
+      pthread_mutex_unlock(&pp_context_mutex);
       return NULL;
     }
     memset(pp_context_array, 0, sizeof(PP_CLIENT_CONTEXT)*PP_MAX_CONTEXT);
