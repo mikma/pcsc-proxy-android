@@ -48,31 +48,37 @@
 
 
 
-int pp_listen(const char *ip, int port) {
+int pp_listen(int family, const char *ip, int port) {
   union {
     struct sockaddr raw;
     struct sockaddr_in in;
+    struct sockaddr_in6 in6;
   } addr;
   int s;
   int fl;
 
   memset(&addr, 0, sizeof(addr));
-#if defined(PF_INET)
-  addr.raw.sa_family=PF_INET;
-#elif defined (AF_INET)
-  addr.raw.sa_family=AF_INET;
-#endif
-  if (!inet_aton(ip, &addr.in.sin_addr)) {
-    DEBUGPE("ERROR: inet_aton(): %d=%s\n", errno, strerror(errno));
-    return -1;
+  addr.raw.sa_family=family;
+  switch (family) {
+  case AF_INET:
+    if (!inet_aton(ip, &addr.in.sin_addr)) {
+      DEBUGPE("ERROR: inet_aton(): %d=%s\n", errno, strerror(errno));
+      return -1;
+    }
+    addr.in.sin_port=htons(port);
+    break;
+  case AF_INET6:
+    if (!inet_pton(family, ip, &addr.in6.sin6_addr)) {
+      DEBUGPE("ERROR: inet_pton(): %d=%s\n", errno, strerror(errno));
+      return -1;
+    }
+    addr.in6.sin6_port=htons(port);
+    break;
+  default:
+    DEBUGPE("ERROR: unknown family %d\n", family);
   }
-  addr.in.sin_port=htons(port);
 
-#if defined(PF_INET)
-  s=socket(PF_INET, SOCK_STREAM,0);
-#elif defined (AF_INET)
-  s=socket(AF_INET, SOCK_STREAM,0);
-#endif
+  s=socket(family, SOCK_STREAM,0);
   if (s==-1) {
     DEBUGPE("ERROR: socket(): %d=%s\n", errno, strerror(errno));
     return -1;
@@ -88,7 +94,7 @@ int pp_listen(const char *ip, int port) {
     return -1;
   }
 
-  if (bind(s, &addr.raw, sizeof(struct sockaddr_in))) {
+  if (bind(s, &addr.raw, sizeof(addr))) {
     DEBUGPE("ERROR: bind(): %d=%s\n", errno, strerror(errno));
     close(s);
     return -1;
@@ -277,8 +283,41 @@ int pp_send(int sk, const s_message *msg) {
   return 0;
 }
 
+static int pp_getport(int s) {
+  union {
+    struct sockaddr sa;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+  } addr;
+  socklen_t len = sizeof(addr);
+
+  memset(&addr, 0, sizeof(addr));
+
+  if (getsockname(s, (struct sockaddr*)&addr, &len) == -1) {
+    DEBUGPE("ERROR: getsockname %d\n", errno);
+    return -1;
+  }
+
+  switch (addr.sa.sa_family) {
+  case AF_INET:
+    return ntohs(addr.in.sin_port);
+  case AF_INET6:
+    return ntohs(addr.in6.sin6_port);
+  default:
+    return -1;
+  }
+}
 
 
+static netopts_t pp_network_opts = {
+  .listen = pp_listen,
+  .accept = pp_accept,
+  .connect = pp_connect_by_ip,
+  .recv = pp_recv,
+  .send = pp_send,
+  .getport = pp_getport,
+};
 
-
-
+void pp_network_init(netopts_t **opts) {
+  *opts = &pp_network_opts;
+}

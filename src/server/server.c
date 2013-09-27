@@ -56,6 +56,7 @@
 #include <winscard.h>
 
 
+#define HAVE_IPV6
 
 static int pp_daemon_abort=0;
 
@@ -773,8 +774,12 @@ static int pp_handleConnection(PP_TLS_SESSION *session) {
 int main(int argc, char **argv) {
   int sk;
   int rv;
-  const char *addr="0.0.0.0";
+  const char *addr=NULL;
   PP_TLS_SERVER_CONTEXT *ctx = NULL;
+  netopts_t *opts=NULL;
+  int port=-1;
+  int opt;
+  int family = AF_INET;
 
   rv=setSignalHandler();
   if (rv) {
@@ -782,8 +787,58 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  if (argc>1)
-    addr=argv[1];
+  while ((opt = getopt(argc, argv, "b:f:p:")) != -1) {
+    switch (opt) {
+    case 'f':
+      switch (optarg[0]) {
+      case '4':
+        family = AF_INET;
+        break;
+#ifdef HAVE_IPV6
+      case '6':
+        family = AF_INET6;
+        break;
+#endif
+      default:
+        DEBUGPE("Usage: %s [-b addr]\n", argv[0]);
+        exit(-1);
+      }
+      break;
+    case 'p':
+      port=atoi(optarg);
+      break;
+    default:
+      DEBUGPE("Usage: %s [-b addr]\n", argv[0]);
+      exit(-1);
+    }
+  }
+
+  if (addr == NULL) {
+    if (family == AF_INET)
+      addr="0.0.0.0";
+#ifdef HAVE_IPV6
+    else if (family == AF_INET6)
+      addr="::";
+#endif
+  }
+
+  if (port == -1) {
+    if (family == AF_INET)
+      port=PP_TCP_PORT;
+  }
+
+  if (opts == NULL) {
+#ifdef HAVE_IPV6
+    if (family == AF_INET || family == AF_INET6)
+#else
+    if (family == AF_INET)
+#endif
+      pp_network_init(&opts);
+    else {
+      DEBUGPE("ERROR: Unsupported device type: %d\n", family);
+      exit(-1);
+    }
+  }
 
   rv=pp_init_server(&ctx);
   if (rv<0) {
@@ -791,20 +846,20 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  DEBUGPI("INFO: Listening on [%s]:%d\n",
-         addr, PP_TCP_PORT);
-
-  sk=pp_listen(addr, PP_TCP_PORT);
+  sk=opts->listen(family, addr, port);
   if (sk<0) {
     DEBUGPE("ERROR: Could not start listening.\n");
     return 2;
   }
 
+  DEBUGPI("INFO: Listening on [%s]:%d\n",
+          addr, opts->getport(sk));
+
   while(!pp_daemon_abort) {
     PP_TLS_SESSION *session = NULL;
     int newS;
 
-    newS=pp_accept(sk);
+    newS=opts->accept(sk);
     if (newS!=-1) {
       pid_t pid;
 
@@ -840,6 +895,13 @@ int main(int argc, char **argv) {
 	close(newS);
       }
     }
+  }
+
+  switch (family) {
+  case AF_INET:
+  case AF_INET6:
+    /* pp_network_fini(); */
+    break;
   }
 
   return 0;

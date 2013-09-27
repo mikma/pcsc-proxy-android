@@ -1,7 +1,6 @@
 /***************************************************************************
-    begin       : Wed Jan 20 2010
-    copyright   : (C) 2010 by Martin Preuss
-    email       : martin@libchipcard.de
+    begin       : Sat Sep 28 2013
+    copyright   : (C) 2013 by Mikael Magnusson
 
  ***************************************************************************
  *                                                                         *
@@ -23,23 +22,25 @@
  ***************************************************************************/
 
 
-#ifndef PP_NETWORK_H
-#define PP_NETWORK_H
+#ifndef PP_NETOPTS_H
+#define PP_NETOPTS_H
 
 
-#include "netopts.h"
 #include "message.h"
 
 
-#define PP_TCP_PORT 3030
+struct netopts {
+  int (*listen)(int family, const char *ip, int port);
+  int (*accept)(int sk);
 
+  int (*connect)(const char *ip, int port);
 
-int pp_recv(int sk, s_message *msg);
-int pp_send(int sk, const s_message *msg);
+  int (*recv)(int sk, s_message *msg);
+  int (*send)(int sk, const s_message *msg);
+  int (*getport)(int sk);
+};
 
-void pp_network_init(netopts_t **opts);
-
+typedef struct netopts netopts_t;
 
 
 #endif
-

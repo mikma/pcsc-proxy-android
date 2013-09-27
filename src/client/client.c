@@ -93,6 +93,8 @@ static PP_CARD_CONTEXT *pp_card_array=NULL;
 static pthread_mutex_t pp_context_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t pp_card_mutex=PTHREAD_MUTEX_INITIALIZER;
 
+static netopts_t *g_opts;
+
 
 static PP_CLIENT_CONTEXT *pp_findContext(uint32_t id) {
   uint32_t rid;
@@ -422,8 +424,10 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	endutent();
       }
 
+      pp_network_init(&g_opts);
+
       /* connect */
-      rv=pp_connect_by_ip(hostname, PP_TCP_PORT);
+      rv=g_opts->connect(hostname, PP_TCP_PORT);
       if (rv<0) {
 	DEBUGPE("ERROR: Could not connect\n");
 	return rv;
