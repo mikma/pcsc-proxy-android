@@ -144,7 +144,7 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
   memset(ctx, 0, sizeof(*ctx));
 
 #ifndef OPENSSL_NO_SRP
-  ctx->srp_vfile = "/tmp/srp.txt";
+  ctx->srp_vfile = "pcsc-proxy.srp";
 #endif
 
   OpenSSL_add_all_algorithms();
@@ -260,7 +260,9 @@ int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
   ctx->ssl_ctx = SSL_CTX_new(TLSv1_1_client_method());
 
   if (ctx->ssl_ctx == NULL) {
-    ERR_print_errors_fp(stderr);
+    char buf[256]="";
+    ERR_error_string_n(ERR_get_error(), buf, sizeof(buf));
+    DEBUGPE("ERROR: %s", buf);
     return -1;
   }
 
