@@ -8,20 +8,29 @@ libcommon_la_SOURCES=\
   network.c \
   message.c
 
+libcommon_la_LIBADD=
+
 if LIBGNUTLS
 INCLUDES += $(LIBGNUTLS_CFLAGS)
 libcommon_la_SOURCES += tls.c
-libcommon_la_LIBADD = $(LIBGNUTLS_LIBS)
+libcommon_la_LIBADD += $(LIBGNUTLS_LIBS)
 endif
 
 if OPENSSL
-INCLUDES += $(OPENSSL_LIBS)
+INCLUDES += $(OPENSSL_CFLAGS)
 libcommon_la_SOURCES += openssl.c
-libcommon_la_LIBADD = $(OPENSSL_LIBS)
+libcommon_la_LIBADD += $(OPENSSL_LIBS)
+endif
+
+if BLUETOOTH
+INCLUDES += $(BLUETOOTH_CFLAGS)
+libcommon_la_SOURCES += bluetooth.c
+libcommon_la_LIBADD += $(BLUETOOTH_LIBS)
 endif
 
 noinst_HEADERS=\
   message.h \
   network.h \
-  tls.h
+  tls.h \
+  bluetooth.h
 

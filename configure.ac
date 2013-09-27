@@ -65,6 +65,25 @@ AM_CONDITIONAL([LIBGNUTLS], [test "$enable_openssl" = "no"])
 
 ###-------------------------------------------------------------------------
 #
+# check for bluetooth
+#
+AC_ARG_ENABLE(bluetooth,
+  [  --enable-bluetooth              enable bluetooth (default=auto)],
+  enable_openssl="$enableval",
+  enable_openssl="no")
+
+if test ! "$enable_bluetooth" = "no"; then
+  PKG_CHECK_MODULES([BLUETOOTH], [bluez],[
+    use_bluetooth="yes"
+    AC_DEFINE(USE_BLUETOOTH,[1], [bluetooth])
+  ],[use_bluetooth="no"])
+fi
+AM_CONDITIONAL([BLUETOOTH], [test "$use_bluetooth" = "yes"])
+
+
+
+###-------------------------------------------------------------------------
+#
 # GCC version (check for usability)
 #
 AC_MSG_CHECKING(if symbol visibility is supported)

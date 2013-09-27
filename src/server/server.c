@@ -30,6 +30,9 @@
 
 #include "message.h"
 #include "network.h"
+#ifdef USE_BLUETOOTH
+# include "bluetooth.h"
+#endif
 #include "tls.h"
 
 #include <string.h>
@@ -789,8 +792,18 @@ int main(int argc, char **argv) {
 
   while ((opt = getopt(argc, argv, "b:f:p:")) != -1) {
     switch (opt) {
+#ifdef USE_BLUETOOTH
+    case 'b':
+      addr=optarg;
+      break;
+#endif
     case 'f':
       switch (optarg[0]) {
+#ifdef USE_BLUETOOTH
+      case 'b':
+        family = AF_BLUETOOTH;
+        break;
+#endif
       case '4':
         family = AF_INET;
         break;
@@ -820,11 +833,20 @@ int main(int argc, char **argv) {
     else if (family == AF_INET6)
       addr="::";
 #endif
+#ifdef USE_BLUETOOTH
+    else if (family == AF_BLUETOOTH)
+      addr="00:00:00:00:00:00";
+#endif
   }
 
   if (port == -1) {
     if (family == AF_INET)
       port=PP_TCP_PORT;
+#ifdef USE_BLUETOOTH
+    else if (family == AF_BLUETOOTH)
+      /* Default port */
+      port=0;
+#endif
   }
 
   if (opts == NULL) {
@@ -834,6 +856,10 @@ int main(int argc, char **argv) {
     if (family == AF_INET)
 #endif
       pp_network_init(&opts);
+#ifdef USE_BLUETOOTH
+    else if (family == AF_BLUETOOTH)
+      pp_bluetooth_init(&opts);
+#endif
     else {
       DEBUGPE("ERROR: Unsupported device type: %d\n", family);
       exit(-1);
@@ -902,6 +928,11 @@ int main(int argc, char **argv) {
   case AF_INET6:
     /* pp_network_fini(); */
     break;
+#ifdef USE_BLUETOOTH
+  case AF_BLUETOOTH:
+    pp_bluetooth_fini();
+    break;
+#endif
   }
 
   return 0;
