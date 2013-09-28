@@ -22,6 +22,19 @@
  *                                                                         *
  ***************************************************************************/
 
+/* 
+ * Environment variables:
+ *
+ * PCSC_FAMILY: one of
+ *	4: IPv4 (default)
+ *	6: IPv6
+ *	b: Bluetooth rfcomm
+ *	u: Unix domain
+ * PCSC_USER: TLS SRP user name
+ * PCSC_PASSWD: TLS SRP password
+ * PCSC_PORT: TCP port of rfcomm channel
+ */
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
