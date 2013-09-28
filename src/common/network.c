@@ -318,6 +318,7 @@ static netopts_t pp_network_opts = {
   .getport = pp_getport,
 };
 
-void pp_network_init(netopts_t **opts) {
+int pp_network_init(netopts_t **opts) {
   *opts = &pp_network_opts;
+  return 0;
 }

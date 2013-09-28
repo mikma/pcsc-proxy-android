@@ -30,6 +30,7 @@
 
 #include "message.h"
 #include "network.h"
+#include "unix.h"
 #ifdef USE_BLUETOOTH
 # include "bluetooth.h"
 #endif
@@ -812,6 +813,9 @@ int main(int argc, char **argv) {
         family = AF_INET6;
         break;
 #endif
+      case 'u':
+        family = AF_UNIX;
+        break;
       default:
         DEBUGPE("Usage: %s [-b addr]\n", argv[0]);
         exit(-1);
@@ -837,6 +841,11 @@ int main(int argc, char **argv) {
     else if (family == AF_BLUETOOTH)
       addr="00:00:00:00:00:00";
 #endif
+
+    if (addr == NULL) {
+      DEBUGPE("ERROR: Address/path not set and no default available\n");
+      exit(-1);
+    }
   }
 
   if (port == -1) {
@@ -856,6 +865,8 @@ int main(int argc, char **argv) {
     if (family == AF_INET)
 #endif
       pp_network_init(&opts);
+    else if (family == AF_UNIX)
+      pp_unix_init(&opts);
 #ifdef USE_BLUETOOTH
     else if (family == AF_BLUETOOTH)
       pp_bluetooth_init(&opts);
@@ -878,8 +889,10 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  DEBUGPI("INFO: Listening on [%s]:%d\n",
-          addr, opts->getport(sk));
+  if (opts->getport)
+    port = opts->getport(sk);
+
+  DEBUGPI("INFO: Listening on [%s]:%d\n", addr, port);
 
   while(!pp_daemon_abort) {
     PP_TLS_SESSION *session = NULL;

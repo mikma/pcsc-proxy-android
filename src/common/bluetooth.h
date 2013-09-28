@@ -27,7 +27,7 @@
 
 #include "netopts.h"
 
-void pp_bluetooth_init(netopts_t **opts);
+int pp_bluetooth_init(netopts_t **opts);
 void pp_bluetooth_fini();
 
 #endif

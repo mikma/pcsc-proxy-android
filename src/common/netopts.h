@@ -42,5 +42,6 @@ struct netopts {
 
 typedef struct netopts netopts_t;
 
+int pp_netopts_init(int family, netopts_t **opts);
 
 #endif

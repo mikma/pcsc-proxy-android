@@ -1,7 +1,6 @@
 /***************************************************************************
-    begin       : Wed Jan 20 2010
-    copyright   : (C) 2010 by Martin Preuss
-    email       : martin@libchipcard.de
+    begin       : Fri Sep 27 2013
+    copyright   : (C) 2013 by Mikael Magnusson
 
  ***************************************************************************
  *                                                                         *
@@ -22,25 +21,13 @@
  *                                                                         *
  ***************************************************************************/
 
-
-#ifndef PP_NETWORK_H
-#define PP_NETWORK_H
+#ifndef PP_UNIX_H
+#define PP_UNIX_H
 
 
 #include "netopts.h"
-#include "message.h"
 
-
-#define PP_TCP_PORT 3030
-
-
-int pp_accept(int sk);
-int pp_recv(int sk, s_message *msg);
-int pp_send(int sk, const s_message *msg);
-
-int pp_network_init(netopts_t **opts);
-
-
+int pp_unix_init(netopts_t **opts);
+void pp_unix_fini();
 
 #endif
-

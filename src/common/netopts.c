@@ -1,7 +1,6 @@
 /***************************************************************************
-    begin       : Wed Jan 20 2010
-    copyright   : (C) 2010 by Martin Preuss
-    email       : martin@libchipcard.de
+    begin       : Sat Sep 28 2013
+    copyright   : (C) 2013 by Mikael Magnusson
 
  ***************************************************************************
  *                                                                         *
@@ -23,24 +22,27 @@
  ***************************************************************************/
 
 
-#ifndef PP_NETWORK_H
-#define PP_NETWORK_H
-
-
 #include "netopts.h"
-#include "message.h"
-
-
-#define PP_TCP_PORT 3030
-
-
-int pp_accept(int sk);
-int pp_recv(int sk, s_message *msg);
-int pp_send(int sk, const s_message *msg);
-
-int pp_network_init(netopts_t **opts);
-
-
-
+#include "network.h"
+#include "unix.h"
+#ifdef USE_BLUETOOTH
+#include "bluetooth.h"
 #endif
+#include <sys/types.h>
+#include <sys/socket.h>
 
+int pp_netopts_init(int family, netopts_t **opts) {
+  switch(family) {
+  case AF_INET:
+  case AF_INET6:
+    return pp_network_init(opts);
+#ifdef USE_BLUETOOTH
+  case AF_BLUETOOTH:
+    return pp_bluetooth_init(opts);
+#endif
+  case AF_UNIX:
+    return pp_unix_init(opts);
+  default:
+    return -1;
+  }
+}

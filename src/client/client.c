@@ -372,11 +372,19 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
       char hostname[256];
       const char *s;
       int sock;
+      int family=AF_INET;
+      int port=PP_TCP_PORT;
 
       s=getenv("PCSC_SERVER");
       if (s && *s) {
 	strncpy(hostname, s, sizeof(hostname)-1);
 	hostname[sizeof(hostname)-1]=0;
+
+	s=getenv("PCSC_PORT");
+	if (s && *s) {
+	  DEBUGPI("Port: %s\n", s);
+	  port = atoi(s);
+	}
       }
       else {
 	char terminal[256];
@@ -424,10 +432,31 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	endutent();
       }
 
-      pp_network_init(&g_opts);
+      s=getenv("PCSC_FAMILY");
+      if (s && *s) {
+	DEBUGPI("Family: %s\n", s);
+	switch(s[0]) {
+	case '4':
+	  family = AF_INET;
+	  break;
+	case '6':
+	  family = AF_INET6;
+	  break;
+	case 'b':
+	  family = AF_BLUETOOTH;
+	  break;
+	case 'u':
+	  family = AF_UNIX;
+	  break;
+	default:
+	  DEBUGPE("ERROR: Unsupported address family: %s", s);
+	}
+      }
+
+      pp_netopts_init(family, &g_opts);
 
       /* connect */
-      rv=g_opts->connect(hostname, PP_TCP_PORT);
+      rv=g_opts->connect(hostname, port);
       if (rv<0) {
 	DEBUGPE("ERROR: Could not connect\n");
 	return rv;

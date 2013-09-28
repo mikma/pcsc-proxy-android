@@ -224,25 +224,6 @@ static int pp_btlisten(int family, const char *btaddr, int channel) {
 
 
 
-static int pp_btaccept(int sk) {
-  socklen_t addrLen;
-  int newS;
-  struct sockaddr peerAddr;
-
-  addrLen=sizeof(peerAddr);
-  newS=accept(sk, &peerAddr, &addrLen);
-  if (newS!=-1)
-    return newS;
-  else {
-    if (errno!=EINTR) {
-      DEBUGPE("ERROR: accept(): %d=%s\n", errno, strerror(errno));
-    }
-    return -1;
-  }
-}
-
-
-
 static int pp_btconnect(const char *btaddr, int channel) {
   union {
     struct sockaddr raw;
@@ -293,7 +274,7 @@ static int pp_btgetport(int s) {
 
 static netopts_t pp_bluetooth_opts = {
   .listen = pp_btlisten,
-  .accept = pp_btaccept,
+  .accept = pp_accept,
   .connect = pp_btconnect,
   .recv = pp_recv,
   .send = pp_send,
@@ -301,8 +282,9 @@ static netopts_t pp_bluetooth_opts = {
 };
 
 
-void pp_bluetooth_init(netopts_t **opts) {
+int pp_bluetooth_init(netopts_t **opts) {
   *opts = &pp_bluetooth_opts;
+  return 0;
 }
 
 void pp_bluetooth_fini() {

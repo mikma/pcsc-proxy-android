@@ -5,8 +5,10 @@ AM_CFLAGS=$(visibility_cflags)
 noinst_LTLIBRARIES=libcommon.la
 
 libcommon_la_SOURCES=\
+  netopts.c \
   network.c \
-  message.c
+  message.c \
+  unix.c
 
 libcommon_la_LIBADD=
 
@@ -32,5 +34,6 @@ noinst_HEADERS=\
   message.h \
   network.h \
   tls.h \
-  bluetooth.h
+  bluetooth.h \
+  unix.h
 
