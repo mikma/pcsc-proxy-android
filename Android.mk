@@ -15,8 +15,10 @@ LOCAL_C_INCLUDES := \
 	jni
 LOCAL_SRC_FILES := \
 	common/network.c \
+	common/netopts.c \
 	common/message.c \
 	common/openssl.c \
+	common/unix.c \
 
 LOCAL_SHARED_LIBRARIES := libssl libcrypto
 
