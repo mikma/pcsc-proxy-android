@@ -35,6 +35,7 @@
 #include "network.h"
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <errno.h>
 #include <memory.h>
 #include <unistd.h>
@@ -43,18 +44,34 @@
 #include <sys/un.h>
 
 
+static int init_sockaddr_un(struct sockaddr_un *sun, socklen_t *sunlen,
+                            const char *path) {
+  int pathlen = strlen(path);
+
+  if ((pathlen + 1) > sizeof(sun->sun_path))
+    return -1;
+
+  sun->sun_family=AF_UNIX;
+  sun->sun_path[0] = 0;
+  memcpy(sun->sun_path + 1, path, pathlen);
+  *sunlen = pathlen + offsetof(struct sockaddr_un, sun_path) + 1;
+  return 0;
+}
+
 static int pp_uxlisten(int family, const char *path, int channel) {
   union {
     struct sockaddr raw;
     struct sockaddr_un sun;
   } addr;
+  socklen_t len = sizeof(addr);
   int s;
 
   memset(&addr, 0, sizeof(addr));
 
-  addr.raw.sa_family=AF_UNIX;
-  addr.sun.sun_path[0] = 0;
-  snprintf(addr.sun.sun_path + 1, sizeof(addr.sun.sun_path)-1, "%s", path);
+  if (init_sockaddr_un(&addr.sun, &len, path)) {
+    DEBUGPE("ERROR: init_sockaddr_un()\n");
+    return -1;
+  }
 
   s=socket(AF_UNIX, SOCK_STREAM, 0);
   if (s==-1) {
@@ -62,7 +79,7 @@ static int pp_uxlisten(int family, const char *path, int channel) {
     return -1;
   }
 
-  if (bind(s, &addr.raw, sizeof(addr))) {
+  if (bind(s, &addr.raw, len)) {
     DEBUGPE("ERROR: bind(): %d=%s\n", errno, strerror(errno));
     close(s);
     return -1;
@@ -85,11 +102,14 @@ static int pp_uxconnect(const char *path, int channel) {
     struct sockaddr_un sun;
   } addr;
   int s;
+  socklen_t len = sizeof(addr);
 
   memset(&addr, 0, sizeof(addr));
-  addr.raw.sa_family=AF_UNIX;
-  addr.sun.sun_path[0] = 0;
-  snprintf(addr.sun.sun_path + 1, sizeof(addr.sun.sun_path)-1, "%s", path);
+
+  if (init_sockaddr_un(&addr.sun, &len, path)) {
+    DEBUGPE("ERROR: init_sockaddr_un()\n");
+    return -1;
+  }
 
   s=socket(AF_UNIX, SOCK_STREAM,0);
 
@@ -98,8 +118,8 @@ static int pp_uxconnect(const char *path, int channel) {
     return -1;
   }
 
-  if (connect(s, &addr.raw, sizeof(struct sockaddr_un))) {
-    DEBUGPE("ERROR: connect(): %d=%s\n", errno, strerror(errno));
+  if (connect(s, &addr.raw, len)) {
+    DEBUGPE("ERROR: connect(%s): %d=%s\n", path, errno, strerror(errno));
     close(s);
     return -1;
   }
@@ -119,6 +139,7 @@ static netopts_t pp_unix_opts = {
 
 
 int pp_unix_init(netopts_t **opts) {
+  DEBUGPI("Init Unix domain socket\n");
   *opts = &pp_unix_opts;
   return 0;
 }
