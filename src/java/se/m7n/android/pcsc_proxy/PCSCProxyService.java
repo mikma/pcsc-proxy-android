@@ -181,9 +181,12 @@ public class PCSCProxyService extends Service {
 
                         Log.i(TAG, "ConnectionThread await");
                         try {
+                            lock.lock();
                             stop.await();
                         } catch (InterruptedException e) {
                             Log.d(TAG, "ConnectionThread await", e);
+                        } finally {
+                            lock.unlock();
                         }
                         Log.i(TAG, "ConnectionThread signalled");
                         thread1.cancel();
