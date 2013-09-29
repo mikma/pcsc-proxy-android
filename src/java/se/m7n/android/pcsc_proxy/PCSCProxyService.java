@@ -25,6 +25,7 @@ import java.security.*;
 import java.util.*;
 
 import se.m7n.android.env.Setenv;
+import org.openintents.smartcard.PCSCDaemon;
 
 public class PCSCProxyService extends Service {
     public static final String TAG = "PCSCProxyService";
@@ -244,11 +245,17 @@ public class PCSCProxyService extends Service {
         mThread.start();
     }
 
-    private final IBinder mBinder = new PCSCProxyBinder();
+    private final PCSCDaemon.Stub mBinder = new PCSCProxyBinder();
 
-    final class PCSCProxyBinder extends Binder {
-        public PCSCProxyService getService() {
-            return PCSCProxyService.this;
+    final class PCSCProxyBinder extends PCSCDaemon.Stub {
+        public boolean start() {
+            Log.d(TAG, "start " + String.format("pid:%d uid:%d", getCallingPid(), getCallingUid()));
+            return false;
+        }
+        public void stop() {
+        }
+        public int getFileDescriptor() {
+            return -1;
         }
     }
 }

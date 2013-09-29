@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.RemoteException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -28,6 +29,8 @@ import javax.net.*;
 import javax.net.ssl.*;
 import javax.net.ssl.SSLParameters;
 
+import org.openintents.smartcard.PCSCDaemon;
+
 public class PCSCProxyActivity extends Activity
 {
     final static String TAG = "pcsc-proxy";
@@ -35,7 +38,7 @@ public class PCSCProxyActivity extends Activity
     private EditText mPassword;
     private Handler mHandler;
     private HandlerThread mThread;
-    private PCSCProxyService mProxy;
+    private PCSCDaemon mProxy;
 
     /** Called when the activity is first created. */
     @Override
@@ -110,8 +113,12 @@ public class PCSCProxyActivity extends Activity
     private final ServiceConnection connection = new ServiceConnection() {
             public void onServiceConnected(ComponentName className,
                                             IBinder service) {
-                mProxy = ((PCSCProxyService.PCSCProxyBinder)service).getService();
-
+                mProxy = PCSCDaemon.Stub.asInterface(service);
+                try {
+                    mProxy.start();
+                } catch(RemoteException e) {
+                    Log.e(TAG, "PCSC", e);
+                }
             }
             public void onServiceDisconnected(ComponentName className) {
                 mProxy = null;
