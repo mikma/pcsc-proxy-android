@@ -53,6 +53,7 @@ public class PCSCProxyService extends Service {
 
         Log.d(TAG, "onCreate: " + mSocketName);
         Setenv.setenv("test", "value", 1);
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
 
     @Override
@@ -154,6 +155,15 @@ public class PCSCProxyService extends Service {
                         btSock =
                             device.createRfcommSocketToServiceRecord(BCSC_UUID);
 
+                        // Device discovery is a heavyweight procedure
+                        // on the Bluetooth adapter and will
+                        // significantly slow a device connection.
+                        mBluetoothAdapter.cancelDiscovery();
+
+                        Log.i(TAG, "ConnectionThread try connect");
+                        btSock.connect();
+                        Log.i(TAG, "ConnectionThread connected");
+
                         ChannelThread thread1;
                         ChannelThread thread2;
 
@@ -244,7 +254,7 @@ public class PCSCProxyService extends Service {
                     try {
                         mServer = new LocalServerSocket(mSocketName);
 
-                        Log.i(TAG, "Waiting for connection on: " + mServer);
+                        Log.i(TAG, "Waiting for connection on: " + mSocketName);
 
                         LocalSocket socket;
 
@@ -303,8 +313,8 @@ public class PCSCProxyService extends Service {
             mAllowedUid = -1;
             mAllowedPid = -1;
         }
-        public int getFileDescriptor() {
-            return -1;
+        public String getLocalSocketAddress() {
+            return mSocketName;
         }
     }
 }
