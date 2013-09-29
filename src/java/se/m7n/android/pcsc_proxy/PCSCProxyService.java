@@ -87,14 +87,14 @@ public class PCSCProxyService extends Service {
         return true;
     }
 
-    private static class ChannelThread extends Thread {
+    private static class ReadWriteThread extends Thread {
         private Lock mLock;
         private Condition mCond;
         private InputStream mInput;
         private OutputStream mOutput;
         private volatile boolean mShouldExit = false;
 
-        private ChannelThread(String name, Lock lock, Condition cond,
+        private ReadWriteThread(String name, Lock lock, Condition cond,
                               InputStream input, OutputStream output) {
             super(name);
             mLock = lock;
@@ -243,15 +243,15 @@ public class PCSCProxyService extends Service {
 
                 public void run() {
                     try {
-                        ChannelThread thread1;
-                        ChannelThread thread2;
+                        ReadWriteThread thread1;
+                        ReadWriteThread thread2;
 
                         thread1 =
-                            new ChannelThread("BTtoUN", lock, stop,
+                            new ReadWriteThread("BTtoUN", lock, stop,
                                               btSock.getInputStream(),
                                               socket.getOutputStream());
                         thread2 =
-                            new ChannelThread("UNtoBT", lock, stop,
+                            new ReadWriteThread("UNtoBT", lock, stop,
                                               socket.getInputStream(),
                                               btSock.getOutputStream());
 
@@ -351,7 +351,6 @@ public class PCSCProxyService extends Service {
 
                         while (!mStopping
                                && ((socket = mServer.accept()) != null)) {
-                            Log.i(TAG, "Accepted: " + socket);
 
                             if (mStopping) {
                                 Log.i(TAG, "Stopped");
@@ -362,6 +361,7 @@ public class PCSCProxyService extends Service {
                                 break;
                             }
 
+                            Log.i(TAG, "Accepted: " + socket);
 
                             Credentials creds = socket.getPeerCredentials();
 
