@@ -41,6 +41,9 @@ public class PCSCProxyService extends Service {
     private LocalServerSocket mServer;
     private boolean mStopping = false;
     private BluetoothAdapter mBluetoothAdapter;
+    private boolean mIsBound = false;
+    private int mAllowedUid = -1;
+    private int mAllowedPid = -1;
 
     @Override
     public void onCreate() {
@@ -50,7 +53,6 @@ public class PCSCProxyService extends Service {
 
         Log.d(TAG, "onCreate: " + mSocketName);
         Setenv.setenv("test", "value", 1);
-        start();
     }
 
     @Override
@@ -58,17 +60,31 @@ public class PCSCProxyService extends Service {
         super.onDestroy();
 
         Log.d(TAG, "onDestroy");
-        stop();
+        if (isStarted())
+            stop();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         // Return the interface
-
         Log.d(TAG, "onBind");
+
+        if (mIsBound) {
+            Log.w(TAG, "onBind: Already bound");
+            return null;
+        }
+
+        mIsBound = true;
         return mBinder;
     }
 
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG, "onUnbind");
+        mIsBound = false;
+        return true;
+    }
 
     private class ChannelThread extends Thread {
         private Condition mCond;
@@ -192,17 +208,36 @@ public class PCSCProxyService extends Service {
             LocalSocket mSock = new LocalSocket();
             mSock.connect(mServer.getLocalSocketAddress());
             mSock.close();
+            // mThread.interrupt();
+            // Log.i(TAG, "Interrupt thread");
+            try {
+                mThread.join(TIMEOUT);
+            } catch(InterruptedException e) {
+                Log.w(TAG, "Thread join failed");
+            } finally {
+                mThread = null;
+            }
+            // TODO stop connectionthread
         } catch(IOException e) {
             Log.d(TAG, "Stop", e);
         }
     }
 
     private boolean isAllowed(Credentials creds) {
-        // FIXME
-        return true;
+        return (mAllowedPid > 0) && creds.getPid() == mAllowedPid
+            && (mAllowedUid > 0) && creds.getUid() == mAllowedUid;
     }
 
-    private void start() {
+    private boolean isStarted() {
+        return mThread != null;
+    }
+
+    private boolean start() {
+        if (isStarted()) {
+            Log.w(TAG, "Already started");
+            return false;
+        }
+
         mStopping = false;
         mThread = new Thread(new Runnable() {
                 public void run() {
@@ -239,10 +274,10 @@ public class PCSCProxyService extends Service {
                         throw new RuntimeException(e);
                     }
                     Log.i(TAG, "Thread end");
-                    mThread = null;
                 }
             });
         mThread.start();
+        return true;
     }
 
     private final PCSCDaemon.Stub mBinder = new PCSCProxyBinder();
@@ -250,9 +285,23 @@ public class PCSCProxyService extends Service {
     final class PCSCProxyBinder extends PCSCDaemon.Stub {
         public boolean start() {
             Log.d(TAG, "start " + String.format("pid:%d uid:%d", getCallingPid(), getCallingUid()));
-            return false;
+            if (PCSCProxyService.this.isStarted()) {
+                Log.e(TAG, "Already started");
+                return false;
+            }
+            mAllowedUid = getCallingUid();
+            mAllowedPid = getCallingPid();
+            PCSCProxyService.this.start();
+            return true;
         }
         public void stop() {
+            if (PCSCProxyService.this.isStarted()) {
+                PCSCProxyService.this.stop();
+            } else {
+                Log.e(TAG, "Not started");
+            }
+            mAllowedUid = -1;
+            mAllowedPid = -1;
         }
         public int getFileDescriptor() {
             return -1;

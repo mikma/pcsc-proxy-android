@@ -61,6 +61,11 @@ public class PCSCProxyActivity extends Activity
     @Override
     public void onDestroy()
     {
+        try {
+            mProxy.stop();
+        } catch(RemoteException e) {
+            Log.w(TAG, "onDestroy", e);
+        }
         unbindService(connection);
         stopHandler();
 
