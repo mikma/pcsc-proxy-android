@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
@@ -29,6 +30,7 @@ import org.openintents.smartcard.PCSCDaemon;
 
 public class PCSCProxyService extends Service {
     public static final String TAG = "PCSCProxyService";
+    public static final String ACCESS_PCSC = "org.openintents.smartcard.permission.ACCESS_PCSC";
     public static final int TIMEOUT = 500;
     public static final UUID BCSC_UUID = UUID.fromString("1ad34c3e-7872-4142-981d-98b280416ce8");
 
@@ -42,8 +44,6 @@ public class PCSCProxyService extends Service {
     private boolean mStopping = false;
     private BluetoothAdapter mBluetoothAdapter;
     private boolean mIsBound = false;
-    private int mAllowedUid = -1;
-    private int mAllowedPid = -1;
 
     @Override
     public void onCreate() {
@@ -237,8 +237,8 @@ public class PCSCProxyService extends Service {
     }
 
     private boolean isAllowed(Credentials creds) {
-        return (mAllowedPid > 0) && creds.getPid() == mAllowedPid
-            && (mAllowedUid > 0) && creds.getUid() == mAllowedUid;
+        return checkPermission(ACCESS_PCSC, creds.getPid(), creds.getUid())
+            == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean isStarted() {
@@ -302,8 +302,6 @@ public class PCSCProxyService extends Service {
                 Log.e(TAG, "Already started");
                 return false;
             }
-            mAllowedUid = getCallingUid();
-            mAllowedPid = getCallingPid();
             PCSCProxyService.this.start();
             return true;
         }
@@ -313,8 +311,6 @@ public class PCSCProxyService extends Service {
             } else {
                 Log.e(TAG, "Not started");
             }
-            mAllowedUid = -1;
-            mAllowedPid = -1;
         }
         public String getLocalSocketAddress() {
             return mSocketName;
