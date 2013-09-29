@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PCSCProxy</string>
+    <string name="pcsc_daemon_permission_label">Smart card access</string>
+    <string name="pcsc_daemon_permission_desc">Allows the application
+    to access a smart card.</string>
 </resources>
