@@ -1,0 +1,39 @@
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <PreferenceCategory
+      android:title="@string/dialog_based_preferences">
+
+    <EditTextPreference
+        android:key="edittext_preference"
+        android:title="@string/title_edittext_preference"
+        android:summary="@string/summary_edittext_preference"
+        />
+
+    <se.m7n.android.pcsc_proxy.PCSCAddressPreference
+        android:key="address_preference"
+        android:title="Bluetooth device"
+        android:summary="Selected bluetooth device."
+        android:dialogMessage="Are you sure"
+        android:positiveButtonText="Select"
+        android:negativeButtonText="Cancel" />
+
+    <!-- android:dialogIcon="@android:drawable/ic_dialog_alert" -->
+
+  </PreferenceCategory>
+
+  <PreferenceCategory
+      android:title="@string/launch_preferences">
+
+    <PreferenceScreen
+        android:title="@string/title_intent_preference"
+        android:summary="@string/summary_intent_preference">
+
+      <intent android:action="android.intent.action.VIEW"
+              android:data="@string/preference_url" />
+
+    </PreferenceScreen>
+
+  </PreferenceCategory>
+
+</PreferenceScreen>

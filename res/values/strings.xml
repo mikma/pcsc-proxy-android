@@ -4,4 +4,13 @@
     <string name="pcsc_daemon_permission_label">Smart card access</string>
     <string name="pcsc_daemon_permission_desc">Allows the application
     to access a smart card.</string>
+
+    <string name="pref_name">PCSCProxy settings</string>
+    <string name="dialog_based_preferences">str1</string>
+    <string name="title_edittext_preference">str2</string>
+    <string name="summary_edittext_preference">str3</string>
+    <string name="launch_preferences">str3.1</string>
+    <string name="title_intent_preference">str4</string>
+    <string name="summary_intent_preference">str5</string>
+    <string name="preference_url">http://www.android.com</string>
 </resources>

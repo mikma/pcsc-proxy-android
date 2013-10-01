@@ -227,6 +227,7 @@ public class PCSCProxyService extends Service {
         private BluetoothSocket btSock;
 
         private ConnectionThread(LocalSocket socket_, BluetoothSocket btSock_) {
+            super("Connection");
             socket = socket_;
             btSock = btSock_;
         }

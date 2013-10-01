@@ -23,6 +23,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name="PCSCPreferenceActivity"
+                  android:label="@string/pref_name">
+        </activity>
         <service android:name="PCSCProxyService"
                  android:permission="org.openintents.smartcard.permission.ACCESS_PCSC">
           <intent-filter>

@@ -3,14 +3,19 @@ package se.m7n.android.pcsc_proxy;
 import java.io.IOException;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.util.Log;
 import android.view.View;
@@ -51,23 +56,35 @@ public class PCSCProxyActivity extends Activity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        Intent intent = new Intent(this, PCSCProxyService.class);
-        bindService(intent, connection, BIND_AUTO_CREATE);
+        // Intent intent = new Intent(this, PCSCProxyService.class);
+        // bindService(intent, connection, BIND_AUTO_CREATE);
 
         // mPassword = (EditText) findViewById(R.id.password);
         // ((Button) findViewById(R.id.test)).setOnClickListener(mTest);
+
+        // Register the BroadcastReceiver
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(mReceiver, filter);
+
+        Intent startPref = new Intent(this, PCSCPreferenceActivity.class);
+        startActivity(startPref);
+
+        // BluetoothAdapter.getDefaultAdapter().startDiscovery();
     }
 
     @Override
     public void onDestroy()
     {
         try {
-            mProxy.stop();
+            if (mProxy != null)
+                mProxy.stop();
         } catch(RemoteException e) {
             Log.w(TAG, "onDestroy", e);
         }
         unbindService(connection);
         stopHandler();
+
+        unregisterReceiver(mReceiver);
 
         super.onDestroy();
     }
@@ -127,6 +144,21 @@ public class PCSCProxyActivity extends Activity
             }
             public void onServiceDisconnected(ComponentName className) {
                 mProxy = null;
+            }
+        };
+
+    // Create a BroadcastReceiver for ACTION_FOUND
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                // When discovery finds a device
+                if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                    // Get the BluetoothDevice object from the Intent
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    // Add the name and address to an array adapter to show in a ListView
+                    //mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                    Log.d(TAG, "Found BT: " + device);
+                }
             }
         };
 }
