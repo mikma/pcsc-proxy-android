@@ -13,4 +13,8 @@
     <string name="title_intent_preference">str4</string>
     <string name="summary_intent_preference">str5</string>
     <string name="preference_url">http://www.android.com</string>
+    <string name="title_username_preference">User Name</string>
+    <string name="summary_username_preference">Enter User Name</string>
+    <string name="title_password_preference">Password</string>
+    <string name="summary_password_preference">Enter Password</string>
 </resources>

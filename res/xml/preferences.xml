@@ -20,6 +20,16 @@
 
     <!-- android:dialogIcon="@android:drawable/ic_dialog_alert" -->
 
+    <EditTextPreference
+        android:key="username_preference"
+        android:title="@string/title_username_preference"
+        android:summary="@string/summary_username_preference" />
+    <EditTextPreference
+        android:key="password_preference"
+        android:title="@string/title_password_preference"
+        android:summary="@string/summary_password_preference"
+        android:inputType="textPassword" />
+
   </PreferenceCategory>
 
   <PreferenceCategory
