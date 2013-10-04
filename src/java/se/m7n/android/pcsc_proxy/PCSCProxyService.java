@@ -169,9 +169,7 @@ public class PCSCProxyService extends Service {
                         break;
                     }
 
-                    Log.d(TAG, "Read: " + len);
                     if (len > 0) {
-                        Log.d(TAG, "Write: " + len);
                         mOutput.write(buf, 0, len);
                     }
                 }
