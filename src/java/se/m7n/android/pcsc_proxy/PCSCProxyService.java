@@ -6,10 +6,12 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import android.net.Credentials;
@@ -44,6 +46,7 @@ public class PCSCProxyService extends Service {
     private boolean mStopping = false;
     private BluetoothAdapter mBluetoothAdapter;
     private boolean mIsBound = false;
+    private String mAddress;
 
     @Override
     public void onCreate() {
@@ -54,6 +57,9 @@ public class PCSCProxyService extends Service {
         Log.d(TAG, "onCreate: " + mSocketName);
         Setenv.setenv("test", "value", 1);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        mAddress = prefs.getString(PCSCPreferenceActivity.BT_ADDR_PREF, null);
     }
 
     @Override
@@ -194,9 +200,8 @@ public class PCSCProxyService extends Service {
         if (mConnectionThread != null)
             return false;
 
-        String address = TEST_ADDRESS;
         BluetoothDevice device =
-            mBluetoothAdapter.getRemoteDevice(address);
+            mBluetoothAdapter.getRemoteDevice(mAddress);
         BluetoothSocket btSock;
 
         try {
@@ -337,6 +342,10 @@ public class PCSCProxyService extends Service {
     private boolean start() {
         if (isStarted()) {
             Log.w(TAG, "Already started");
+            return false;
+        }
+        if (mAddress == null) {
+            Log.w(TAG, "Address not configured");
             return false;
         }
 

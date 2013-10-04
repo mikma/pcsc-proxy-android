@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.preference.DialogPreference;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -31,6 +32,7 @@ public class PCSCAddressPreference extends DialogPreference {
     private ListView mList;
     private ArrayAdapter<BluetoothDevice> mAdapter;
     private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothDevice mSelected;
 
     public PCSCAddressPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -41,25 +43,37 @@ public class PCSCAddressPreference extends DialogPreference {
     @Override
     protected void onDialogClosed(boolean positiveResult) {
         super.onDialogClosed(positiveResult);
-        persistBoolean(positiveResult);
+        Log.d(TAG, "onDialogClosed: " + positiveResult + "," + mSelected);
+        if (mSelected != null) {
+            persistString(mSelected.getName());
+
+            SharedPreferences.Editor editor = getEditor();
+            editor.putString(PCSCPreferenceActivity.BT_ADDR_PREF,
+                             mSelected.getAddress());
+            editor.commit();
+        }
     }
 
     @Override
     protected void onPrepareDialogBuilder(AlertDialog.Builder builder) {
         // builder.setTitle(R.string.pin_changepin_title);
-        // builder.setPositiveButton(null, null);
-        // builder.setNegativeButton(null, null);
-        super.onPrepareDialogBuilder(builder);  
+        builder.setPositiveButton(null, null);
+        builder.setNegativeButton(null, null);
+        mSelected = null;
+        super.onPrepareDialogBuilder(builder);
     }
 
     @Override
     public void onBindDialogView(View view){
         mList = (ListView)view.findViewById(R.id.devicepicker_list);
+        mList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
         mList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Log.d(TAG, "onItemClick: " + id);
+                    Log.d(TAG, "onItemClick: " + id + "," + position);
+                    mSelected = mAdapter.getItem(position);
+                    getDialog().dismiss();
                 }
             });
 

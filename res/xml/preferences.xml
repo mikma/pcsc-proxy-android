@@ -11,7 +11,7 @@
         />
 
     <se.m7n.android.pcsc_proxy.PCSCAddressPreference
-        android:key="address_preference"
+        android:key="btname_preference"
         android:title="Bluetooth device"
         android:summary="Selected bluetooth device."
         android:dialogMessage="Are you sure"

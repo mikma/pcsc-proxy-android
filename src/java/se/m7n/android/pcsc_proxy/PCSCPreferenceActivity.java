@@ -18,6 +18,8 @@ public class PCSCPreferenceActivity
 {
     public static final String TAG = "PCSCPref";
     public static final String PASSWORD_PREF = "password_preference";
+    public static final String BT_NAME_PREF = "btname_preference";
+    public static final String BT_ADDR_PREF = "btaddr_preference";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -74,6 +76,8 @@ public class PCSCPreferenceActivity
             } else {
                 pref.setSummary("");
             }
+        } else if (key.equals(BT_NAME_PREF)) {
+            pref.setSummary(val.toString());
         } else if (pref instanceof EditTextPreference) {
             pref.setSummary(val.toString());
         } else if (pref instanceof CheckBoxPreference) {
