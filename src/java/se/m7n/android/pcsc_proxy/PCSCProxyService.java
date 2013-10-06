@@ -10,7 +10,10 @@ import android.content.SharedPreferences;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -33,28 +36,26 @@ import org.openintents.smartcard.PCSCDaemon;
 public class PCSCProxyService extends Service {
     public static final String TAG = "PCSCProxyService";
     public static final String ACCESS_PCSC = "org.openintents.smartcard.permission.ACCESS_PCSC";
-    public static final int TIMEOUT = 500;
+    public static final int TIMEOUT = 2000;
     public static final UUID BCSC_UUID = UUID.fromString("1ad34c3e-7872-4142-981d-98b280416ce8");
 
-    private final Lock pkcs11Lock = new ReentrantLock();
-    private final Condition pkcs11Bound = pkcs11Lock.newCondition();
-
-    private String mSocketName;
-    private Thread mThread;
-    private ConnectionThread mConnectionThread;
-    private LocalServerSocket mServer;
-    private boolean mStopping = false;
+    private ServerThread mThread;
     private BluetoothAdapter mBluetoothAdapter;
-    private boolean mIsBound = false;
     private String mAddress;
+    private String mSocketName;
+    private Handler mHandler;
+    private HandlerThread mHandlerThread;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        mSocketName = toString();
+        Log.d(TAG, "onCreate");
+        mHandlerThread = new HandlerThread("PCSCProxyService handler");
+        mHandlerThread.start();
+        mHandler = new Handler(mHandlerThread.getLooper(),
+                               new HandlerCallback());
 
-        Log.d(TAG, "onCreate: " + mSocketName);
         Setenv.setenv("test", "value", 1);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -64,24 +65,18 @@ public class PCSCProxyService extends Service {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
-
         Log.d(TAG, "onDestroy");
         if (isStarted())
             stop();
+        stopHandler();
+
+        super.onDestroy();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         // Return the interface
         Log.d(TAG, "onBind");
-
-        if (mIsBound) {
-            Log.w(TAG, "onBind: Already bound");
-            return null;
-        }
-
-        mIsBound = true;
         return mBinder;
     }
 
@@ -89,26 +84,50 @@ public class PCSCProxyService extends Service {
     @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind");
-        mIsBound = false;
         return true;
     }
 
+    private void stopHandler() {
+        if (mHandler == null)
+            return;
+        mHandler.getLooper().quit();
+        try {
+            mHandlerThread.join(TIMEOUT);
+        } catch (InterruptedException e) {
+        }
+        mHandlerThread = null;
+        mHandler = null;
+    }
+
+    private class HandlerCallback implements Handler.Callback {
+        public boolean handleMessage(Message msg) {
+            return false;
+        }
+    }
+
+    private interface OnTerminatedListener {
+        void onTerminated();
+    }
+
+    private interface CheckPermission {
+        boolean isAllowed(Credentials creds);
+    }
+
     private static class ReadWriteThread extends Thread {
-        private Lock mLock;
-        private Condition mCond;
+        private OnTerminatedListener listener;
         private InputStream mInput;
         private OutputStream mOutput;
         private volatile boolean mShouldExit = false;
 
-        private ReadWriteThread(String name, Lock lock, Condition cond,
+        private ReadWriteThread(String name,
                               InputStream input, OutputStream output) {
             super(name);
-            mLock = lock;
-            mCond = cond;
             mInput = input;
             mOutput = output;
         }
-
+        private void setTerminatedListener(OnTerminatedListener listener) {
+            this.listener = listener;
+        }
         private void setShouldExit() {
             mShouldExit = true;
         }
@@ -128,9 +147,7 @@ public class PCSCProxyService extends Service {
 
             try {
                 Log.d(TAG, "Pre join: " + toString());
-                // FIXME use timeout
-                join();
-                //join(TIMEOUT);
+                join(TIMEOUT);
                 Log.d(TAG, "Post join: " + toString());
             } catch (InterruptedException e) {
                 Log.d(TAG, "Channel join: " + toString());
@@ -183,43 +200,9 @@ public class PCSCProxyService extends Service {
 
             Log.d(TAG, "Channel finished: " + toString());
 
-            try {
-                mLock.lock();
-                mCond.signalAll();
-            } finally {
-                mLock.unlock();
-            }
-
             onExit();
-        }
-    }
-
-    private boolean startConnection(final LocalSocket socket) {
-        if (mConnectionThread != null)
-            return false;
-
-        BluetoothDevice device =
-            mBluetoothAdapter.getRemoteDevice(mAddress);
-        BluetoothSocket btSock;
-
-        try {
-            btSock =
-                device.createRfcommSocketToServiceRecord(BCSC_UUID);
-
-            // Device discovery is a heavyweight procedure
-            // on the Bluetooth adapter and will
-            // significantly slow a device connection.
-            mBluetoothAdapter.cancelDiscovery();
-
-            Log.i(TAG, "BT socket try connect");
-            btSock.connect();
-            Log.i(TAG, "BT socket connected");
-            mConnectionThread = new ConnectionThread(socket, btSock);
-            mConnectionThread.start();
-            return true;
-        } catch(IOException e) {
-            Log.e(TAG, "BT connect failed", e);
-            return false;
+            if (listener != null)
+                listener.onTerminated();
         }
     }
 
@@ -228,15 +211,18 @@ public class PCSCProxyService extends Service {
         private Condition stop = lock.newCondition();
         private LocalSocket socket;
         private BluetoothSocket btSock;
+        private OnTerminatedListener listener;
 
         private ConnectionThread(LocalSocket socket_, BluetoothSocket btSock_) {
             super("Connection");
             socket = socket_;
             btSock = btSock_;
         }
-
+        private void setTerminatedListener(OnTerminatedListener listener) {
+            this.listener = listener;
+        }
         private void cancel() {
-            Log.d(TAG, "cancel connection");
+            Log.d(TAG, "ConnectionThread cancel");
             try {
                 lock.lock();
                 stop.signalAll();
@@ -244,6 +230,25 @@ public class PCSCProxyService extends Service {
                 lock.unlock();
             }
         }
+        private void cancelAndJoin() {
+            cancel();
+            try {
+                Log.d(TAG, "ConnectionThread Pre join: " + toString());
+                join(TIMEOUT);
+                Log.d(TAG, "ConnectionThread Post join: " + toString());
+            } catch (InterruptedException e) {
+                Log.d(TAG, "ConnectionThread join: " + toString(), e);
+            }
+        }
+
+        OnTerminatedListener rwListener = new OnTerminatedListener() {
+                public void onTerminated() {
+                    if (listener != null)
+                        listener.onTerminated();
+                    else
+                        cancelAndJoin();
+                }
+            };
 
                 public void run() {
                     try {
@@ -251,14 +256,15 @@ public class PCSCProxyService extends Service {
                         ReadWriteThread thread2;
 
                         thread1 =
-                            new ReadWriteThread("BTtoUN", lock, stop,
+                            new ReadWriteThread("BTtoUN",
                                               btSock.getInputStream(),
                                               socket.getOutputStream());
                         thread2 =
-                            new ReadWriteThread("UNtoBT", lock, stop,
+                            new ReadWriteThread("UNtoBT",
                                               socket.getInputStream(),
                                               btSock.getOutputStream());
-
+                        thread1.setTerminatedListener(rwListener);
+                        thread2.setTerminatedListener(rwListener);
                         thread1.start();
                         thread2.start();
 
@@ -293,48 +299,24 @@ public class PCSCProxyService extends Service {
                         throw new RuntimeException(e);
                     }
                     Log.i(TAG, "ConnectionThread end");
+                    if (listener != null)
+                        listener.onTerminated();
                 }
     }
 
     private void stop() {
-        try {
-            Log.d(TAG, "Stopping thread");
-            mStopping = true;
-            LocalSocket mSock = new LocalSocket();
-            mSock.connect(mServer.getLocalSocketAddress());
-            mSock.close();
-            // mThread.interrupt();
-            // Log.i(TAG, "Interrupt thread");
-            try {
-                mThread.join(TIMEOUT);
-            } catch(InterruptedException e) {
-                Log.w(TAG, "Thread join failed");
-            } finally {
-                mThread = null;
-            }
-            if (mConnectionThread != null) {
-                mConnectionThread.cancel();
-                try {
-                    mConnectionThread.join(TIMEOUT);
-                } catch(InterruptedException e) {
-                    Log.w(TAG, "ConnectionThread join failed");
-                } finally {
-                    mConnectionThread = null;
-                }
-            }
-            Log.d(TAG, "Thread stopped");
-        } catch(IOException e) {
-            Log.d(TAG, "Stop failes", e);
-        }
-    }
+        if (!isStarted())
+            return;
 
-    private boolean isAllowed(Credentials creds) {
-        return checkPermission(ACCESS_PCSC, creds.getPid(), creds.getUid())
-            == PackageManager.PERMISSION_GRANTED;
+        Log.d(TAG, "Stopping thread");
+        mSocketName = null;
+        mThread.cancelAndJoin();
+        mThread = null;
+        Log.d(TAG, "Thread stopped");
     }
 
     private boolean isStarted() {
-        return mThread != null;
+        return mThread != null && mThread.isRunning();
     }
 
     private boolean start() {
@@ -346,15 +328,154 @@ public class PCSCProxyService extends Service {
             Log.w(TAG, "Address not configured");
             return false;
         }
+        CheckPermission check = new CheckPermission() {
+                public boolean isAllowed(Credentials creds) {
+                    return checkPermission(ACCESS_PCSC,
+                                           creds.getPid(), creds.getUid())
+                        == PackageManager.PERMISSION_GRANTED;
+                }
+            };
+        mSocketName = null;
+        mThread = new ServerThread(mBluetoothAdapter, mAddress, check);
+        mThread.setTerminatedListener(new OnTerminatedListener(){
+                public void onTerminated() {
+                    mHandler.post(new Runnable() {
+                            public void run() {
+                                Log.d(TAG, "onTerminated trying to cancel");
+                                mThread.cancelAndJoin();
+                            }
+                        });
+                }
+            });
+        try {
+            mSocketName = mThread.startServer();
+            return true;
+        } catch(IOException e) {
+            Log.e(TAG, "Failed to start", e);
+            mThread = null;
+            return false;
+        }
+    }
 
-        mStopping = false;
-        mThread = new Thread(new Runnable() {
-                public void run() {
+    private static class ServerThread extends Thread {
+        private Lock lock = new ReentrantLock();
+        private Condition stop = lock.newCondition();
+
+        private String mSocketName;
+        private LocalServerSocket mServer;
+        private BluetoothAdapter mBluetoothAdapter;
+        private String mBtAddress;
+        private BluetoothSocket mBtSock;
+        private boolean mRunning;
+        private boolean mStopping;
+        private ConnectionThread mConnectionThread;
+        private CheckPermission mCheckPermission;
+        private OnTerminatedListener listener;
+
+        public ServerThread(BluetoothAdapter adapter, String btAddress,
+                            CheckPermission checkPermission) {
+            super("ServerThread");
+            mBluetoothAdapter = adapter;
+            mSocketName = toString()+"@"+hashCode();
+            mRunning = false;
+            mStopping = false;
+            mBtAddress = btAddress;
+            mCheckPermission = checkPermission;
+        }
+        private void setTerminatedListener(OnTerminatedListener listener) {
+            this.listener = listener;
+        }
+        public boolean isRunning() {
+            return mRunning && !mStopping;
+        }
+        private void onExit() {
+            Log.d(TAG, "ServerThread onExit");
+            if (mServer != null) {
+                try {
+                    mServer.close();
+                } catch (IOException e) {
+                    // Ignore
+                    Log.d(TAG, "ServerThread LocalServerSocket close failed", e);
+                }
+                mServer = null;
+            }
+            if (mBtSock != null) {
+                try {
+                    mBtSock.close();
+                } catch (IOException e) {
+                    // Ignore
+                    Log.d(TAG, "ServerThread BluetoothSocket close failed", e);
+                }
+                mBtSock = null;
+            }
+        }
+        public String startServer() throws IOException {
+            mServer = new LocalServerSocket(mSocketName);
+
+            BluetoothDevice device =
+                mBluetoothAdapter.getRemoteDevice(mBtAddress);
+            BluetoothSocket btSock = null;
+
+            try {
+                btSock =
+                    device.createRfcommSocketToServiceRecord(BCSC_UUID);
+
+                // Device discovery is a heavyweight procedure
+                // on the Bluetooth adapter and will
+                // significantly slow a device connection.
+                mBluetoothAdapter.cancelDiscovery();
+
+                Log.i(TAG, "BT socket try connect");
+                btSock.connect();
+                mBtSock = btSock;
+                Log.i(TAG, "BT socket connected");
+                start();
+                return mSocketName;
+            } catch(IOException e) {
+                if (btSock != null)
+                    btSock.close();
+                throw e;
+            }
+        }
+        private void cancel() {
+            Log.d(TAG, "ServerThread cancel");
+            try {
+                lock.lock();
+                stop.signalAll();
+            } finally {
+                lock.unlock();
+            }
+        }
+        public void cancelAndJoin() {
+            if (!isRunning()) {
+                Log.w(TAG, "ServerThread not running");
+                return;
+            }
+            try {
+                Log.d(TAG, "ServerThread.cancelAndJoin");
+                mStopping = true;
+                //cancelConnection();
+                cancel();
+                LocalSocket mSock = new LocalSocket();
+                mSock.connect(mServer.getLocalSocketAddress());
+                mSock.close();
+                // mThread.interrupt();
+                // Log.i(TAG, "Interrupt thread");
+                Log.d(TAG, "ServerThread.join");
+                join(TIMEOUT);
+                Log.d(TAG, "ServerThread joined");
+            } catch(IOException e) {
+                Log.w(TAG, "Thread join failed", e);
+            } catch(InterruptedException e) {
+                Log.w(TAG, "Thread join failed", e);
+            } finally {
+                mRunning = false;
+            }
+        }
+            public void run() {
                     try {
-                        mServer = new LocalServerSocket(mSocketName);
-
+                        mRunning = true;
                         Log.i(TAG, "Waiting for connection on: " + mSocketName);
-
                         LocalSocket socket;
 
                         while (!mStopping
@@ -364,8 +485,6 @@ public class PCSCProxyService extends Service {
                                 Log.i(TAG, "Stopped");
                                 if (socket != null)
                                     socket.close();
-                                mServer.close();
-                                mServer = null;
                                 break;
                             }
 
@@ -373,9 +492,9 @@ public class PCSCProxyService extends Service {
 
                             Credentials creds = socket.getPeerCredentials();
 
-                            if (isAllowed(creds)) {
+                            if (mCheckPermission.isAllowed(creds)) {
                                 Log.i(TAG, "Permission granted");
-                                if (startConnection(socket))
+                                if (handleConnection(socket))
                                     continue;
                             } else {
                                 Log.i(TAG, "Permission not granted");
@@ -387,10 +506,56 @@ public class PCSCProxyService extends Service {
                         throw new RuntimeException(e);
                     }
                     Log.i(TAG, "Thread end");
+                    onExit();
                 }
-            });
-        mThread.start();
-        return true;
+        private boolean handleConnection(final LocalSocket socket) {
+            if (!startConnection(socket))
+                return false;
+
+            Log.i(TAG, "ServerThread await");
+            try {
+                lock.lock();
+                stop.await();
+            } catch (InterruptedException e) {
+                Log.d(TAG, "ServerThread await", e);
+            } finally {
+                lock.unlock();
+            }
+            Log.i(TAG, "ServerThread signalled");
+
+            cancelAndJoinConnection();
+            return true;
+        }
+        private OnTerminatedListener mListener = new OnTerminatedListener() {
+                public void onTerminated() {
+                    if (listener != null)
+                        listener.onTerminated();
+                    else
+                        cancelAndJoin();
+                }
+            };
+        private boolean startConnection(final LocalSocket socket) {
+            if (mConnectionThread != null)
+                return false;
+
+            mConnectionThread = new ConnectionThread(socket, mBtSock);
+            mConnectionThread.setTerminatedListener(mListener);
+            mConnectionThread.start();
+            return true;
+        }
+        private void cancelAndJoinConnection() {
+            if (mConnectionThread != null) {
+                mConnectionThread.cancelAndJoin();
+                mConnectionThread = null;
+            }
+        }
+        private void cancelConnection() {
+            if (mConnectionThread != null) {
+                Log.d(TAG, "ServerThread.cancelConnection enter");
+                mConnectionThread.cancel();
+                Log.d(TAG, "ServerThread.cancelConnection exit");
+            }
+        }
     }
 
     private final PCSCDaemon.Stub mBinder = new PCSCProxyBinder();
@@ -402,8 +567,7 @@ public class PCSCProxyService extends Service {
                 Log.e(TAG, "Already started");
                 return false;
             }
-            PCSCProxyService.this.start();
-            return true;
+            return PCSCProxyService.this.start();
         }
         public void stop() {
             if (PCSCProxyService.this.isStarted()) {
