@@ -10,7 +10,7 @@
         android:summary="@string/summary_edittext_preference"
         />
 
-    <se.m7n.android.pcsc_proxy.PCSCAddressPreference
+    <se.m7n.android.pcsc.btclient.PCSCAddressPreference
         android:key="btname_preference"
         android:title="Bluetooth device"
         android:summary="Selected bluetooth device."

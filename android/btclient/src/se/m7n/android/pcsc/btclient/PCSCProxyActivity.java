@@ -1,4 +1,4 @@
-package se.m7n.android.pcsc_proxy;
+package se.m7n.android.pcsc.btclient;
 
 import java.io.IOException;
 
