@@ -20,7 +20,8 @@ LOCAL_SRC_FILES := \
 	common/openssl.c \
 	common/unix.c \
 
-LOCAL_SHARED_LIBRARIES := libssl libcrypto
+LOCAL_STATIC_LIBRARIES := libssl_static libcrypto_static
+#LOCAL_SHARED_LIBRARIES := libssl$(OPENSSL_POSTFIX) libcrypto$(OPENSSL_POSTFIX)
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -41,7 +42,9 @@ LOCAL_SRC_FILES := \
 
 LOCAL_LDLIBS	:= -llog
 
-LOCAL_SHARED_LIBRARIES := libcommon libssl libcrypto
+LOCAL_STATIC_LIBRARIES := libcommon
+LOCAL_STATIC_LIBRARIES += libssl_static libcrypto_static
+#LOCAL_SHARED_LIBRARIES := libssl$(OPENSSL_POSTFIX) libcrypto$(OPENSSL_POSTFIX)
 
 include $(BUILD_SHARED_LIBRARY)
 
