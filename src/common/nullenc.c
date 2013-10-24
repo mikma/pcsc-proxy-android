@@ -113,6 +113,12 @@ int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
 }
 
 
+int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
+                           const char *name, const char *password)
+{
+  return 0;
+}
+
 
 int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));

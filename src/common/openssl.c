@@ -119,7 +119,7 @@ static int srp_init_server(struct PP_TLS_SERVER_CONTEXT *ctx) {
     DEBUGPD("Use SRP verifier file %s\n", ctx->srp_vfile);
 
     if (!(ctx->srp_vbase = SRP_VBASE_new(ctx->srp_unknown_user_seed))) {
-      DEBUGPE("Can't initialize SRP verifier %s\n",
+      DEBUGPE("Can't initialize SRP verifier %p\n",
               ctx->srp_unknown_user_seed);
       return -1;
     }
@@ -273,7 +273,7 @@ int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
 
 
 int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
-                           char *name, char *password) {
+                           const char *name, const char *password) {
   if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, CIPHER_SRP) < 0){
     ERR_print_errors_fp(stderr);
     return -1;
