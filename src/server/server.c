@@ -35,6 +35,7 @@
 # include "bluetooth.h"
 #endif
 #include "tls.h"
+#include "tlsopts.h"
 
 #include <string.h>
 #include <errno.h>
@@ -669,7 +670,7 @@ static int handleListGroups(s_message *msg) {
 
 
 
-static int pp_nextMsg(PP_TLS_SESSION *session) {
+static int pp_nextMsg(const tlsopts_t *tlsopts,PP_TLS_SESSION *session) {
   union {
     char buffer[PP_MAX_MESSAGE_LEN];
     s_message msg;
@@ -677,7 +678,7 @@ static int pp_nextMsg(PP_TLS_SESSION *session) {
   int rv;
 
   /* recv message from client */
-  rv=pp_tls_recv(session, &m.msg);
+  rv=tlsopts->recv(session, &m.msg);
   if (rv==0) {
     return 1;
   }
@@ -750,7 +751,7 @@ static int pp_nextMsg(PP_TLS_SESSION *session) {
     exit(4);
   }
 
-  rv=pp_tls_send(session, &m.msg);
+  rv=tlsopts->send(session, &m.msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not send message\n");
     return rv;
@@ -761,11 +762,12 @@ static int pp_nextMsg(PP_TLS_SESSION *session) {
 
 
 
-static int pp_handleConnection(PP_TLS_SESSION *session) {
+static int pp_handleConnection(const tlsopts_t *tlsopts,
+                               PP_TLS_SESSION *session) {
   int rv=0;
 
   for (;;) {
-    rv=pp_nextMsg(session);
+    rv=pp_nextMsg(tlsopts, session);
     if (rv)
       break;
   }
@@ -784,6 +786,8 @@ int main(int argc, char **argv) {
   int port=-1;
   int opt;
   int family = AF_INET;
+  int unenc = 0;
+  tlsopts_t *tlsopts = NULL;
 
   rv=setSignalHandler();
   if (rv) {
@@ -791,7 +795,7 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  while ((opt = getopt(argc, argv, "b:f:p:")) != -1) {
+  while ((opt = getopt(argc, argv, "b:f:p:u")) != -1) {
     switch (opt) {
 #ifdef USE_BLUETOOTH
     case 'b':
@@ -824,10 +828,20 @@ int main(int argc, char **argv) {
     case 'p':
       port=atoi(optarg);
       break;
+#ifdef ENABLE_NULLENC
+    case 'u':
+      unenc=1;
+      break;
+#endif
     default:
       DEBUGPE("Usage: %s [-b addr]\n", argv[0]);
       exit(-1);
     }
+  }
+
+  if (pp_tlsopts_init_any(unenc, &tlsopts) < 0) {
+    DEBUGPE("ERROR: Failed to initialize tls methods\n");
+    exit(-1);
   }
 
   if (addr == NULL) {
@@ -877,7 +891,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  rv=pp_init_server(&ctx);
+  rv=tlsopts->init_server(&ctx);
   if (rv<0) {
     DEBUGPE("ERROR: Unable to init TLS context\n");
     return 2;
@@ -917,13 +931,13 @@ int main(int argc, char **argv) {
 	  exit(2);
 	}
 
-	rv=pp_init_server_session(ctx, &session, newS);
+	rv=tlsopts->init_server_session(ctx, &session, newS);
 	if (rv<0) {
 	  DEBUGPE("ERROR: Could not setup server session.\n");
 	  exit(2);
 	}
 
-	rv=pp_handleConnection(session);
+	rv=pp_handleConnection(tlsopts, session);
 	if (rv)
 	  exit(3);
 	exit(0);

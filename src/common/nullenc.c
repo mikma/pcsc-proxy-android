@@ -29,6 +29,7 @@
 
 
 #include "tls.h"
+#include "tlsopts.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,7 +57,7 @@ struct PP_TLS_SESSION {
 };
 
 
-int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
+static int nullenc_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
   PP_TLS_SERVER_CONTEXT *ctx = malloc(sizeof(PP_TLS_SERVER_CONTEXT));
   memset(ctx, 0, sizeof(*ctx));
 
@@ -66,14 +67,14 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
 
 
 
-int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
+static int nullenc_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
 
   free(ctx);
   return 0;
 }
 
 
-int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
+static int nullenc_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
   memset(session, 0, sizeof(*session));
 
@@ -85,7 +86,7 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
 
 
 
-int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
+static int nullenc_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
   
   free(session);
   return 0;
@@ -96,7 +97,7 @@ int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
 
 
 
-int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
+static int nullenc_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
   PP_TLS_CLIENT_CONTEXT *ctx = malloc(sizeof(PP_TLS_CLIENT_CONTEXT));
   memset(ctx, 0, sizeof(*ctx));
 
@@ -106,21 +107,21 @@ int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
 
 
 
-int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
+static int nullenc_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
 
   free(ctx);
   return 0;
 }
 
 
-int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
+static int nullenc_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
                            const char *name, const char *password)
 {
   return 0;
 }
 
 
-int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
+static int nullenc_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
   memset(session, 0, sizeof(*session));
 
@@ -132,7 +133,7 @@ int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_
 
 
 
-int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
+static int nullenc_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
 
   free(session);
   return 0;
@@ -145,7 +146,7 @@ int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
 
 
 
-int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
+static int nullenc_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
   char *p;
   int bytesRead;
 
@@ -215,7 +216,7 @@ int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
 
 
 
-int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
+static int nullenc_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
   int bytesLeft;
   const uint8_t *p;
 
@@ -251,7 +252,32 @@ int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
 }
 
 
-int pp_tls_get_socket(PP_TLS_SESSION *session)
+static int nullenc_tls_get_socket(PP_TLS_SESSION *session)
 {
   return session->socket;
+}
+
+
+static tlsopts_t pp_nullenc_opts = {
+  .init_server = nullenc_init_server,
+  .fini_server = nullenc_fini_server,
+  .init_server_session = nullenc_init_server_session,
+  .fini_server_session = nullenc_fini_server_session,
+  .init_client = nullenc_init_client,
+  .fini_client = nullenc_fini_client,
+  .client_set_srp_auth = nullenc_client_set_srp_auth,
+  .init_client_session = nullenc_init_client_session,
+  .fini_client_session = nullenc_fini_client_session,
+  .recv = nullenc_tls_recv,
+  .send = nullenc_tls_send,
+  .get_socket = nullenc_tls_get_socket,
+};
+
+
+int pp_nullenc_init(tlsopts_t **opts) {
+  *opts = &pp_nullenc_opts;
+  return 0;
+}
+
+void pp_nullenc_fini() {
 }

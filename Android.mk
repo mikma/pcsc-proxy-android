@@ -10,7 +10,10 @@ common_src_include := $(LOCAL_PATH)/common
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libcommon
-LOCAL_CFLAGS	:= -DHAVE_CONFIG_H
+LOCAL_CFLAGS	:= \
+	-DHAVE_CONFIG_H \
+	-DENABLE_NULLENC \
+
 LOCAL_C_INCLUDES := \
 	$(TOP_DIR)/jni
 LOCAL_SRC_FILES := \
@@ -18,6 +21,8 @@ LOCAL_SRC_FILES := \
 	common/netopts.c \
 	common/message.c \
 	common/unix.c \
+	common/tlsopts.c \
+	common/nullenc.c \
 
 ifdef USE_OPENSSL
 LOCAL_SRC_FILES += \

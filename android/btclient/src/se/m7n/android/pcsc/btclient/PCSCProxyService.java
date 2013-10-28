@@ -579,5 +579,9 @@ public class PCSCProxyService extends Service {
         public String getLocalSocketAddress() {
             return mSocketName;
         }
+        public boolean isTlsRequired() {
+            // TLS always required on remote connections
+            return true;
+        }
     }
 }

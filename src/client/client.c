@@ -44,6 +44,7 @@
 #include "message.h"
 #include "network.h"
 #include "tls.h"
+#include "tlsopts.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -107,6 +108,7 @@ static pthread_mutex_t pp_context_mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t pp_card_mutex=PTHREAD_MUTEX_INITIALIZER;
 
 static netopts_t *g_opts;
+static tlsopts_t *g_tlsopts;
 
 
 static PP_CLIENT_CONTEXT *pp_findContext(uint32_t id) {
@@ -188,7 +190,7 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
   id=i+PP_CONTEXT_MAGIC;
   p->id=id;
 
-  rv=pp_init_client(&(p->tlsContext));
+  rv=g_tlsopts->init_client(&(p->tlsContext));
   if (rv<0) {
     DEBUGPE("ERROR: Unable to init TLS context\n");
     p->id=0;
@@ -206,7 +208,7 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
     return NULL;
   }
 
-  if (pp_client_set_srp_auth(p->tlsContext, user, passwd) < 0) {
+  if (g_tlsopts->client_set_srp_auth(p->tlsContext, user, passwd) < 0) {
     DEBUGPE("ERROR: Could not use SRP auth\n");
     p->id=0;
     pthread_mutex_unlock(&pp_context_mutex);
@@ -387,6 +389,7 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
       int sock;
       int family=AF_INET;
       int port=PP_TCP_PORT;
+      int unenc=0;
 
       s=getenv("PCSC_SERVER");
       if (s && *s) {
@@ -458,15 +461,27 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	case 'b':
 	  family = AF_BLUETOOTH;
 	  break;
-	case 'u':
+	case 'u': {
+          const char *nullenc=NULL;
 	  family = AF_UNIX;
+          nullenc=getenv("PCSC_NULLENC");
+          if (strcasecmp(nullenc, "true") == 0
+              || strcasecmp(nullenc, "1") == 0)
+            unenc = 1;
 	  break;
+        }
 	default:
 	  DEBUGPE("ERROR: Unsupported address family: %s", s);
 	}
       }
 
       pp_netopts_init(family, &g_opts);
+
+      rv=pp_tlsopts_init(unenc, &g_tlsopts);
+      if (rv<0) {
+	DEBUGPE("ERROR: Could not initialize tls operations.\n");
+	return rv;
+      }
 
       /* connect */
       rv=g_opts->connect(hostname, port);
@@ -478,7 +493,7 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
       sock=rv;
 
       /* setup tls */
-      rv=pp_init_client_session(ctx->tlsContext, &(ctx->tlsSession), sock);
+      rv=g_tlsopts->init_client_session(ctx->tlsContext, &(ctx->tlsSession), sock);
       if (rv<0) {
 	DEBUGPE("ERROR: Unable to establish TLS connection.\n");
 	close(sock);
@@ -487,13 +502,13 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
     }
   }
 
-  rv=pp_tls_send(ctx->tlsSession, msg);
+  rv=g_tlsopts->send(ctx->tlsSession, msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not send message\n");
     return rv;
   }
 
-  rv=pp_tls_recv(ctx->tlsSession, msg);
+  rv=g_tlsopts->recv(ctx->tlsSession, msg);
   if (rv<0) {
     DEBUGPE("ERROR: Could not receive message\n");
     return rv;
@@ -581,11 +596,11 @@ PP_EXPORT LONG SCardReleaseContext(SCARDCONTEXT hContext) {
   /* exchange */
   rv=pp_exchangeMsg(ctx, &(m.msg));
   DEBUGPI("INFO: Closing connection\n");
-  sock = pp_tls_get_socket(ctx->tlsSession);
-  pp_fini_client_session(ctx->tlsContext, ctx->tlsSession);
+  sock = g_tlsopts->get_socket(ctx->tlsSession);
+  g_tlsopts->fini_client_session(ctx->tlsContext, ctx->tlsSession);
   ctx->tlsSession = NULL;
   close(sock);
-  pp_fini_client(ctx->tlsContext);
+  g_tlsopts->fini_client(ctx->tlsContext);
   ctx->tlsContext = NULL;
   pp_releaseContext(ctx->id);
   if (rv<0) {

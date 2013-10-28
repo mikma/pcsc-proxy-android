@@ -29,6 +29,7 @@
 
 
 #include "tls.h"
+#include "tlsopts.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -139,7 +140,7 @@ static int srp_init_server(struct PP_TLS_SERVER_CONTEXT *ctx) {
 
 
 
-int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
+static int ossl_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
   PP_TLS_SERVER_CONTEXT *ctx = malloc(sizeof(PP_TLS_SERVER_CONTEXT));
   memset(ctx, 0, sizeof(*ctx));
 
@@ -180,7 +181,7 @@ int pp_init_server(PP_TLS_SERVER_CONTEXT **ctx_p){
 
 
 
-int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
+static int ossl_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
 
 #ifndef OPENSSL_NO_SRP
   if (ctx->srp_vbase != NULL) {
@@ -194,7 +195,7 @@ int pp_fini_server(PP_TLS_SERVER_CONTEXT *ctx){
 }
 
 
-int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
+static int ossl_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   int ret;
   int close_flag = 0;
   PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
@@ -238,7 +239,7 @@ int pp_init_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION **session_
 
 
 
-int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
+static int ossl_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
   
   SSL_shutdown(session->ssl);
   SSL_free(session->ssl);
@@ -251,7 +252,7 @@ int pp_fini_server_session(PP_TLS_SERVER_CONTEXT *ctx, PP_TLS_SESSION *session){
 
 
 
-int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
+static int ossl_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
   PP_TLS_CLIENT_CONTEXT *ctx = malloc(sizeof(PP_TLS_CLIENT_CONTEXT));
   memset(ctx, 0, sizeof(*ctx));
 
@@ -272,7 +273,7 @@ int pp_init_client(PP_TLS_CLIENT_CONTEXT **ctx_p){
 
 
 
-int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
+static int ossl_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
                            const char *name, const char *password) {
   if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, CIPHER_SRP) < 0){
     ERR_print_errors_fp(stderr);
@@ -292,7 +293,7 @@ int pp_client_set_srp_auth(PP_TLS_CLIENT_CONTEXT *ctx,
   return 0;
 }
 
-int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
+static int ossl_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
 
   SSL_CTX_free(ctx->ssl_ctx);
   free(ctx);
@@ -301,7 +302,7 @@ int pp_fini_client(PP_TLS_CLIENT_CONTEXT *ctx){
 
 
 
-int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
+static int ossl_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_p, int sock){
   int ret;
   int close_flag = 0;
   PP_TLS_SESSION *session = malloc(sizeof(PP_TLS_SESSION));
@@ -344,7 +345,7 @@ int pp_init_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION **session_
 
 
 
-int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
+static int ossl_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
 
   SSL_shutdown(session->ssl);
   SSL_free(session->ssl);
@@ -359,7 +360,7 @@ int pp_fini_client_session(PP_TLS_CLIENT_CONTEXT *ctx, PP_TLS_SESSION *session){
 
 
 
-int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
+static int ossl_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
   char *p;
   int bytesRead;
 
@@ -429,7 +430,7 @@ int pp_tls_recv(PP_TLS_SESSION *session, s_message *msg) {
 
 
 
-int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
+static int ossl_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
   int bytesLeft;
   const uint8_t *p;
 
@@ -466,7 +467,32 @@ int pp_tls_send(PP_TLS_SESSION *session, const s_message *msg) {
 }
 
 
-int pp_tls_get_socket(PP_TLS_SESSION *session)
+static int ossl_tls_get_socket(PP_TLS_SESSION *session)
 {
   return session->socket;
+}
+
+
+static tlsopts_t pp_openssl_opts = {
+  .init_server = ossl_init_server,
+  .fini_server = ossl_fini_server,
+  .init_server_session = ossl_init_server_session,
+  .fini_server_session = ossl_fini_server_session,
+  .init_client = ossl_init_client,
+  .fini_client = ossl_fini_client,
+  .client_set_srp_auth = ossl_client_set_srp_auth,
+  .init_client_session = ossl_init_client_session,
+  .fini_client_session = ossl_fini_client_session,
+  .recv = ossl_tls_recv,
+  .send = ossl_tls_send,
+  .get_socket = ossl_tls_get_socket,
+};
+
+
+int pp_tlsopts_init(tlsopts_t **opts) {
+  *opts = &pp_openssl_opts;
+  return 0;
+}
+
+void pp_tlsopts_fini() {
 }
