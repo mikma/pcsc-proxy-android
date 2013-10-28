@@ -2,6 +2,10 @@
 TOP_DIR := $(call my-dir)
 LOCAL_PATH := $(TOP_DIR)/src
 
+common_cflags := \
+	-DHAVE_CONFIG_H \
+	-DENABLE_NULLENC \
+
 common_src_include := $(LOCAL_PATH)/common
 
 #
@@ -10,10 +14,7 @@ common_src_include := $(LOCAL_PATH)/common
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libcommon
-LOCAL_CFLAGS	:= \
-	-DHAVE_CONFIG_H \
-	-DENABLE_NULLENC \
-
+LOCAL_CFLAGS	:= $(common_cflags)
 LOCAL_C_INCLUDES := \
 	$(TOP_DIR)/jni
 LOCAL_SRC_FILES := \
@@ -44,7 +45,7 @@ ifdef BUILD_PCSCLITE
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libpcsclite
-LOCAL_CFLAGS	:= -DHAVE_CONFIG_H
+LOCAL_CFLAGS	:= $(common_cflags)
 LOCAL_C_INCLUDES := \
 	$(TOP_DIR)/jni \
 	$(common_src_include)
@@ -71,7 +72,10 @@ endif
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libpcscproxy
-LOCAL_CFLAGS	:= -DHAVE_CONFIG_H
+LOCAL_CFLAGS	:= \
+	$(common_cflags) \
+	-Dmain=pcsc_proxy_main \
+
 LOCAL_C_INCLUDES := \
 	$(TOP_DIR)/jni \
 	$(common_src_include)
