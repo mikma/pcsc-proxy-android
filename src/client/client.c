@@ -175,6 +175,21 @@ static PP_CLIENT_CONTEXT *pp_createContext() {
     memset(pp_context_array, 0, sizeof(PP_CLIENT_CONTEXT)*PP_MAX_CONTEXT);
   }
 
+  if (g_tlsopts == NULL) {
+    const char *nullenc=NULL;
+    int unenc=0;
+    nullenc=getenv("PCSC_NULLENC");
+    if (strcasecmp(nullenc, "true") == 0
+        || strcasecmp(nullenc, "1") == 0)
+      unenc = 1;
+
+    rv=pp_tlsopts_init_any(unenc, &g_tlsopts);
+    if (rv<0) {
+      DEBUGPE("ERROR: Could not initialize tls operations.\n");
+      return NULL;
+    }
+  }
+
   for (i=0; i<PP_MAX_CONTEXT; i++) {
     if (pp_context_array[i].id==0)
       break;
@@ -389,7 +404,6 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
       int sock;
       int family=AF_INET;
       int port=PP_TCP_PORT;
-      int unenc=0;
 
       s=getenv("PCSC_SERVER");
       if (s && *s) {
@@ -461,13 +475,8 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	case 'b':
 	  family = AF_BLUETOOTH;
 	  break;
-	case 'u': {
-          const char *nullenc=NULL;
+	case 'u':
 	  family = AF_UNIX;
-          nullenc=getenv("PCSC_NULLENC");
-          if (strcasecmp(nullenc, "true") == 0
-              || strcasecmp(nullenc, "1") == 0)
-            unenc = 1;
 	  break;
         }
 	default:
@@ -476,12 +485,6 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
       }
 
       pp_netopts_init(family, &g_opts);
-
-      rv=pp_tlsopts_init(unenc, &g_tlsopts);
-      if (rv<0) {
-	DEBUGPE("ERROR: Could not initialize tls operations.\n");
-	return rv;
-      }
 
       /* connect */
       rv=g_opts->connect(hostname, port);
