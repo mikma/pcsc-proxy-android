@@ -797,11 +797,9 @@ int main(int argc, char **argv) {
 
   while ((opt = getopt(argc, argv, "b:f:p:u")) != -1) {
     switch (opt) {
-#ifdef USE_BLUETOOTH
     case 'b':
       addr=optarg;
       break;
-#endif
     case 'f':
       switch (optarg[0]) {
 #ifdef USE_BLUETOOTH
