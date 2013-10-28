@@ -38,6 +38,10 @@ int pp_tlsopts_init_any(int nullenc, tlsopts_t **opts) {
     return -1;
 #endif
   } else {
+#ifdef USE_OPENSSL
     return pp_tlsopts_init(opts);
+#else
+    return -1;
+#endif
   }
 }
