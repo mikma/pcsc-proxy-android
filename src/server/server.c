@@ -788,6 +788,7 @@ int main(int argc, char **argv) {
   int family = AF_INET;
   int unenc = 0;
   tlsopts_t *tlsopts = NULL;
+  int i;
 
   rv=setSignalHandler();
   if (rv) {
@@ -795,7 +796,14 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  DEBUGPE("DEBUG argc:%d", argc);
+  for (i=0; i<argc; i++) {
+    DEBUGPE("DEBUG argv[%d]:%s", i, argv[i]);
+  }
+
   while ((opt = getopt(argc, argv, "b:f:p:u")) != -1) {
+    DEBUGPE("DEBUG getopt %c %p %c", opt, optarg, optarg?optarg[0]:'X');
+
     switch (opt) {
     case 'b':
       addr=optarg;
@@ -869,6 +877,8 @@ int main(int argc, char **argv) {
       port=0;
 #endif
   }
+
+  DEBUGPE("DEBUG -f %d -b %s", family, addr);
 
   if (opts == NULL) {
 #ifdef HAVE_IPV6
