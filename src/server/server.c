@@ -64,14 +64,31 @@
 #define HAVE_IPV6
 
 static int pp_daemon_abort=0;
+static int pp_wake_pipe[2] = {-1, -1};
 
+
+int pp_stop() {
+  char buf = 0;
+
+  pp_daemon_abort=1;
+  DEBUGPI("INFO: Terminating daemon.\n");
+
+  if (pp_wake_pipe[1] < 0) {
+    return -1;
+  }
+
+  write(pp_wake_pipe[1], &buf, 1);
+  close(pp_wake_pipe[1]);
+  pp_wake_pipe[1] = -1;
+  return 0;
+}
 
 
 /* Signal handler */
 
 struct sigaction saINT,saTERM, saINFO, saHUP, saCHLD;
 
-void signalHandler(int s) {
+static void signalHandler(int s) {
   switch(s) {
   case SIGINT:
   case SIGTERM:
@@ -790,6 +807,13 @@ int main(int argc, char **argv) {
   tlsopts_t *tlsopts = NULL;
   int i;
 
+  pp_daemon_abort=0;
+
+  if (pipe(pp_wake_pipe)) {
+    DEBUGPE("ERROR: Could not setup exit pipe");
+    return 2;
+  }
+
   rv=setSignalHandler();
   if (rv) {
     DEBUGPE("ERROR: Could not setup signal handler\n");
@@ -919,6 +943,30 @@ int main(int argc, char **argv) {
   while(!pp_daemon_abort) {
     PP_TLS_SESSION *session = NULL;
     int newS;
+    int maxFd;
+    fd_set readfds;
+    int res;
+
+    FD_ZERO(&readfds);
+    FD_SET(sk, &readfds);
+    maxFd = sk;
+
+    FD_SET(pp_wake_pipe[0], &readfds);
+    if (maxFd < pp_wake_pipe[0])
+      maxFd = pp_wake_pipe[0];
+
+    res = select(maxFd + 1, &readfds, NULL, NULL, NULL);
+    if (res < 0) {
+      DEBUGPE("ERROR: Select failed");
+      break;
+    }
+
+    if (FD_ISSET(pp_wake_pipe[0], &readfds)) {
+      DEBUGPI("INFO: Awaken");
+      continue;
+    } else if (!FD_ISSET(sk, &readfds)) {
+      continue;
+    }
 
     newS=opts->accept(sk);
     if (newS!=-1) {
@@ -956,6 +1004,13 @@ int main(int argc, char **argv) {
 	close(newS);
       }
     }
+  }
+
+  close(sk);
+
+  if (pp_wake_pipe[0] >= 0) {
+    close(pp_wake_pipe[0]);
+    pp_wake_pipe[0] = -1;
   }
 
   switch (family) {
