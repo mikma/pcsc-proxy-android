@@ -792,6 +792,15 @@ static int pp_handleConnection(const tlsopts_t *tlsopts,
   return rv;
 }
 
+static int write_pid_file(const char *pid_file) {
+  FILE *file = fopen(pid_file, "w");
+
+  if (file == NULL)
+    return -1;
+  fprintf(file, "%d", getpid());
+  fclose(file);
+  return 0;
+}
 
 
 int main(int argc, char **argv) {
@@ -806,6 +815,7 @@ int main(int argc, char **argv) {
   int unenc = 0;
   tlsopts_t *tlsopts = NULL;
   int i;
+  const char *pid_file=NULL;
 
   pp_daemon_abort=0;
 
@@ -825,7 +835,7 @@ int main(int argc, char **argv) {
     DEBUGPE("DEBUG argv[%d]:%s", i, argv[i]);
   }
 
-  while ((opt = getopt(argc, argv, "b:f:p:u")) != -1) {
+  while ((opt = getopt(argc, argv, "b:f:p:ui:")) != -1) {
     DEBUGPE("DEBUG getopt %c %p %c", opt, optarg, optarg?optarg[0]:'X');
 
     switch (opt) {
@@ -863,11 +873,18 @@ int main(int argc, char **argv) {
       unenc=1;
       break;
 #endif
+    case 'i':
+      pid_file=optarg;
+      DEBUGPI("INFO: Pid file: %s", pid_file);
+      break;
     default:
       DEBUGPE("Usage: %s [-b addr]\n", argv[0]);
       exit(-1);
     }
   }
+
+  if (pid_file)
+    unlink(pid_file);
 
   if (pp_tlsopts_init_any(unenc, &tlsopts) < 0) {
     DEBUGPE("ERROR: Failed to initialize tls methods\n");
@@ -939,6 +956,9 @@ int main(int argc, char **argv) {
     port = opts->getport(sk);
 
   DEBUGPI("INFO: Listening on [%s]:%d\n", addr, port);
+
+  if (pid_file)
+    write_pid_file(pid_file);
 
   while(!pp_daemon_abort) {
     PP_TLS_SESSION *session = NULL;
