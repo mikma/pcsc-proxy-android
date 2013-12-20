@@ -478,7 +478,6 @@ static int pp_exchangeMsg(PP_CLIENT_CONTEXT *ctx, s_message *msg) {
 	case 'u':
 	  family = AF_UNIX;
 	  break;
-        }
 	default:
 	  DEBUGPE("ERROR: Unsupported address family: %s", s);
 	}
