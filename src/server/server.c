@@ -830,13 +830,13 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  DEBUGPE("DEBUG argc:%d", argc);
+  DEBUGPD("DEBUG argc:%d", argc);
   for (i=0; i<argc; i++) {
-    DEBUGPE("DEBUG argv[%d]:%s", i, argv[i]);
+    DEBUGPD("DEBUG argv[%d]:%s", i, argv[i]);
   }
 
   while ((opt = getopt(argc, argv, "b:f:p:ui:")) != -1) {
-    DEBUGPE("DEBUG getopt %c %p %c", opt, optarg, optarg?optarg[0]:'X');
+    DEBUGPD("DEBUG getopt %c %p %c", opt, optarg, optarg?optarg[0]:'X');
 
     switch (opt) {
     case 'b':
