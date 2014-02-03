@@ -919,7 +919,7 @@ int main(int argc, char **argv) {
 #endif
   }
 
-  DEBUGPE("DEBUG -f %d -b %s", family, addr);
+  DEBUGPD("DEBUG -f %d -b %s", family, addr);
 
   if (opts == NULL) {
 #ifdef HAVE_IPV6
