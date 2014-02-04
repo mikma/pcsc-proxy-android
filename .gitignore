@@ -3,6 +3,7 @@ Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache
+bin/
 config.guess
 config.h
 config.h.in
@@ -11,7 +12,9 @@ config.status
 config.sub
 configure
 depcomp
+gen/
 install-sh
+libs/
 libtool
 ltmain.sh
 missing
@@ -24,6 +27,7 @@ missing
 stamp-h1
 src/client/pcsctest
 src/server/pcsc-proxy
+obj/
 pcsc-proxy-*.tar.gz
 
 android/btclient/bin/
